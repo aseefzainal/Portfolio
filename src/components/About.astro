@@ -1,0 +1,36 @@
+---
+import { profile } from "@/data/profile";
+import SectionTitle from "@/components/SectionTitle.astro";
+
+const facts = [
+  { title: "Laravel", text: "Systems, reports, and permissions" },
+  { title: "Next.js", text: "This portfolio, in public" },
+  { title: "Malaysia", text: "Based here" },
+  { title: "Open", text: "Freelance and full-time" },
+];
+---
+
+<section id="about" class="px-5 py-12 sm:py-16">
+  <div class="mx-auto max-w-3xl">
+    <SectionTitle kicker="Profile" title="About" />
+    <div class="mt-8 grid gap-5">
+      {
+        profile.about.map((paragraph) => (
+          <p data-reveal class="leading-7 text-muted-foreground">
+            {paragraph}
+          </p>
+        ))
+      }
+    </div>
+    <ul class="mt-8 grid border-t sm:grid-cols-2">
+      {
+        facts.map((fact) => (
+          <li data-reveal class="border-b py-4 sm:odd:pr-6 sm:even:pl-6">
+            <h3 class="text-sm font-medium">{fact.title}</h3>
+            <p class="mt-1 text-sm text-muted-foreground">{fact.text}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>

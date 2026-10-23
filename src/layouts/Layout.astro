@@ -1,0 +1,41 @@
+---
+import "@/styles/global.css";
+import { profile } from "@/data/profile";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = `${profile.name} · ${profile.role}`, description = profile.summary } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" class="h-full antialiased">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script is:inline>
+      (function () {
+        try {
+          const saved = localStorage.getItem("theme");
+          const dark =
+            saved === "dark" || (saved !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.toggle("dark", dark);
+        } catch {
+          /* Keep the default theme when storage is blocked. */
+        }
+      })();
+    </script>
+  </head>
+  <body class="flex min-h-full flex-col font-sans">
+    <slot />
+    <script>
+      import { initMotion } from "@/scripts/motion";
+      initMotion();
+    </script>
+  </body>
+</html>
