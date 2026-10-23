@@ -17,6 +17,13 @@
 /.next/
 /out/
 
+# copied from pdfjs-dist by postinstall
+/public/pdf.worker.min.mjs
+
+# astro
+/dist/
+/.astro/
+
 # production
 /build
 
@@ -32,6 +39,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
