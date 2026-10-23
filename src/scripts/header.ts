@@ -6,9 +6,11 @@ function currentTheme(): "light" | "dark" {
 
 export function initHeader() {
   const header = document.querySelector<HTMLElement>("[data-header]");
-  if (!header || header.dataset.ready === "true") return;
+  if (!header || header.dataset.ready === "true") return () => {};
   header.dataset.ready = "true";
 
+  const controller = new AbortController();
+  const listen = { signal: controller.signal };
   const themeButton = header.querySelector<HTMLButtonElement>("[data-theme-toggle]");
   const menuButton = header.querySelector<HTMLButtonElement>("[data-menu-toggle]");
   const mobileNav = header.querySelector<HTMLElement>("#mobile-nav");
@@ -23,12 +25,16 @@ export function initHeader() {
 
   paintTheme(currentTheme());
 
-  themeButton?.addEventListener("click", () => {
-    const next = currentTheme() === "dark" ? "light" : "dark";
-    document.documentElement.classList.toggle("dark", next === "dark");
-    localStorage.setItem(themeKey, next);
-    paintTheme(next);
-  });
+  themeButton?.addEventListener(
+    "click",
+    () => {
+      const next = currentTheme() === "dark" ? "light" : "dark";
+      document.documentElement.classList.toggle("dark", next === "dark");
+      localStorage.setItem(themeKey, next);
+      paintTheme(next);
+    },
+    listen,
+  );
 
   function setMenu(open: boolean) {
     if (!menuButton || !mobileNav) return;
@@ -37,19 +43,15 @@ export function initHeader() {
     menuButton.textContent = open ? "Close" : "Menu";
   }
 
-  menuButton?.addEventListener("click", () => {
-    setMenu(mobileNav?.hasAttribute("hidden") ?? false);
-  });
-
+  menuButton?.addEventListener("click", () => setMenu(mobileNav?.hasAttribute("hidden") ?? false), listen);
   mobileNav?.querySelectorAll("a").forEach((link) => {
-    link.addEventListener("click", () => setMenu(false));
+    link.addEventListener("click", () => setMenu(false), listen);
   });
 
   const sections = ids
     .map((id) => document.getElementById(id))
     .filter((section): section is HTMLElement => section !== null);
   const visible = new Set<string>();
-
   const observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -67,6 +69,11 @@ export function initHeader() {
     },
     { rootMargin: "-20% 0px -55% 0px", threshold: 0 },
   );
-
   sections.forEach((section) => observer.observe(section));
+
+  return () => {
+    controller.abort();
+    observer.disconnect();
+    delete header.dataset.ready;
+  };
 }

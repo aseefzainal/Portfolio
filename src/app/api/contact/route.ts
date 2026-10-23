@@ -1,7 +1,3 @@
-import type { APIRoute } from "astro";
-
-export const prerender = false;
-
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function field(body: unknown, key: string) {
@@ -10,13 +6,10 @@ function field(body: unknown, key: string) {
 }
 
 function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
+  return Response.json(body, { status });
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export async function POST(request: Request) {
   let body: unknown;
   try {
     body = await request.json();
@@ -64,4 +57,4 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   return json({ ok: true }, 200);
-};
+}
