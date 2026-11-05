@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { saveParagraph } from "@/app/admin/about/actions";
 import { ParagraphEditForm } from "@/components/admin/SimpleTextForm";
+import { AdminFormSkeleton } from "@/components/LoadingSkeletons";
 import { getAboutParagraph } from "@/db";
 import { io } from "next/cache";
 
@@ -29,7 +30,7 @@ async function EditParagraph({ id }: { id: string }) {
 export default async function EditParagraphPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return (
-    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
+    <Suspense fallback={<AdminFormSkeleton />}>
       <EditParagraph id={id} />
     </Suspense>
   );

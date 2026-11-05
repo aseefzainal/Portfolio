@@ -18,6 +18,8 @@ function readProject(formData: FormData) {
   const repo = String(formData.get("repo") ?? "").trim();
   const image = String(formData.get("image") ?? "").trim();
   const mark = String(formData.get("mark") ?? "").trim();
+  const showOnSite = formData.get("showOnSite") === "on";
+  const showOnResume = formData.get("showOnResume") === "on";
   const errors: string[] = [];
 
   if (!title) errors.push("Title is required.");
@@ -25,7 +27,18 @@ function readProject(formData: FormData) {
   if (href && !isHttpUrl(href)) errors.push("Live URL must start with http:// or https://.");
   if (repo && !isHttpUrl(repo)) errors.push("Repo URL must start with http:// or https://.");
 
-  return { title, description, stack, href, repo, image, mark, error: errors.join(" ") };
+  return {
+    title,
+    description,
+    stack,
+    href,
+    repo,
+    image,
+    mark,
+    showOnSite,
+    showOnResume,
+    error: errors.join(" "),
+  };
 }
 
 export async function createProject(_state: FormState, formData: FormData): Promise<FormState> {
@@ -36,7 +49,8 @@ export async function createProject(_state: FormState, formData: FormData): Prom
   await insertProject(project);
   revalidatePath("/");
   revalidatePath("/admin/projects");
-  redirect("/admin/projects");
+  revalidatePath("/admin/resume");
+  redirect("/admin/resume?tab=projects");
 }
 
 export async function saveProject(_state: FormState, formData: FormData): Promise<FormState> {
@@ -50,16 +64,18 @@ export async function saveProject(_state: FormState, formData: FormData): Promis
   await updateProject(id, project);
   revalidatePath("/");
   revalidatePath("/admin/projects");
-  redirect("/admin/projects");
+  revalidatePath("/admin/resume");
+  redirect("/admin/resume?tab=projects");
 }
 
 export async function removeProjectAction(formData: FormData) {
   await requireAdmin();
   const id = readId(formData);
-  if (!id) redirect("/admin/projects");
+  if (!id) redirect("/admin/resume?tab=projects");
 
   await removeProject(id);
   revalidatePath("/");
   revalidatePath("/admin/projects");
-  redirect("/admin/projects");
+  revalidatePath("/admin/resume");
+  redirect("/admin/resume?tab=projects");
 }

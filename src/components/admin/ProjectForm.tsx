@@ -5,6 +5,7 @@ import type { FormState } from "@/lib/admin";
 import type { StoredProject } from "@/db";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -82,6 +83,16 @@ export function ProjectForm({
           placeholder="https://"
           className="h-10"
         />
+      </div>
+      <div className="grid gap-2">
+        <Label className="font-normal">
+          <Checkbox name="showOnSite" value="on" defaultChecked={project?.showOnSite ?? true} />
+          Show on homepage
+        </Label>
+        <Label className="font-normal">
+          <Checkbox name="showOnResume" value="on" defaultChecked={project?.showOnResume ?? false} />
+          Show on resume
+        </Label>
       </div>
       {state.error ? (
         <Alert variant="destructive">

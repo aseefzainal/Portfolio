@@ -22,3 +22,11 @@ export function readId(formData: FormData) {
   if (!Number.isInteger(id) || id < 1) return undefined;
   return id;
 }
+
+const PHOTO_MAX_CHARS = 350_000;
+
+export function isProfilePhoto(value: string) {
+  if (!value) return true;
+  if (value.length > PHOTO_MAX_CHARS) return false;
+  return /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(value);
+}

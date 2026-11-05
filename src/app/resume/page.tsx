@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Logo } from "@/components/Logo";
 import { HeaderEffect } from "@/components/ClientEffects";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ResumeEffect } from "@/components/ResumeEffect";
 import { getSiteProfile } from "@/db";
 import { profile as fallbackProfile } from "@/data/profile";
@@ -73,9 +74,23 @@ async function ResumeContent() {
   );
 }
 
+function ResumePageSkeleton() {
+  return (
+    <main className="px-5 py-8 sm:py-12">
+      <div className="mx-auto w-full max-w-[210mm]">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-10 w-32 rounded-md" />
+        </div>
+        <Skeleton className="aspect-[210/297] w-full rounded-sm" />
+      </div>
+    </main>
+  );
+}
+
 export default function ResumePage() {
   return (
-    <Suspense fallback={<p className="px-5 py-16 text-sm text-muted-foreground">Loading resume…</p>}>
+    <Suspense fallback={<ResumePageSkeleton />}>
       <ResumeContent />
     </Suspense>
   );

@@ -4,7 +4,7 @@ import { io } from "next/cache";
 
 export async function Projects() {
   await io();
-  const projects = await listProjects();
+  const projects = await listProjects({ showOnSite: true });
 
   return (
     <section id="projects" className="px-5 py-12 sm:py-16">

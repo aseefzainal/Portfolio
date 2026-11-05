@@ -7,6 +7,7 @@ import {
   removeParagraphAction,
 } from "@/app/admin/about/actions";
 import { DeleteButton } from "@/components/admin/DeleteButton";
+import { AdminTableSkeleton } from "@/components/LoadingSkeletons";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,7 +138,7 @@ async function AboutManager() {
 
 export default function AdminAboutPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading about…</p>}>
+    <Suspense fallback={<AdminTableSkeleton rows={5} />}>
       <AboutManager />
     </Suspense>
   );

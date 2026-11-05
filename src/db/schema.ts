@@ -10,6 +10,8 @@ export const projects = sqliteTable("projects", {
   position: integer("position").notNull(),
   image: text("image").notNull().default(""),
   mark: text("mark").notNull().default(""),
+  showOnSite: integer("show_on_site").notNull().default(1),
+  showOnResume: integer("show_on_resume").notNull().default(0),
 });
 
 export const users = sqliteTable("users", {
@@ -39,6 +41,8 @@ export const siteProfile = sqliteTable("site_profile", {
   linkedin: text("linkedin").notNull(),
   resume: text("resume").notNull(),
   githubUsername: text("github_username").notNull(),
+  photo: text("photo").notNull().default(""),
+  photoShape: text("photo_shape").notNull().default("circle"),
 });
 
 export const aboutParagraphs = sqliteTable("about_paragraphs", {

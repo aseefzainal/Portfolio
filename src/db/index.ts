@@ -39,6 +39,8 @@ export type StoredProject = {
   position: number;
   image: string;
   mark: string;
+  showOnSite: boolean;
+  showOnResume: boolean;
 };
 
 export type StoredUser = {
@@ -57,6 +59,8 @@ export type SiteProfile = {
   linkedin: string;
   resume: string;
   githubUsername: string;
+  photo: string;
+  photoShape: "circle" | "rounded" | "square";
 };
 
 export type AboutParagraph = {
@@ -112,6 +116,8 @@ function toProject(row: typeof projects.$inferSelect): StoredProject {
     position: row.position,
     image: row.image,
     mark: row.mark,
+    showOnSite: row.showOnSite !== 0,
+    showOnResume: row.showOnResume !== 0,
   };
 }
 
@@ -184,6 +190,7 @@ export async function getSiteProfile(): Promise<SiteProfile> {
   if (!row) {
     throw new Error("Site profile is missing. Apply D1 migrations.");
   }
+  const shape = row.photoShape;
   return {
     name: row.name,
     role: row.role,
@@ -194,6 +201,8 @@ export async function getSiteProfile(): Promise<SiteProfile> {
     linkedin: row.linkedin,
     resume: row.resume,
     githubUsername: row.githubUsername,
+    photo: row.photo ?? "",
+    photoShape: shape === "rounded" || shape === "square" ? shape : "circle",
   };
 }
 
@@ -211,6 +220,8 @@ export async function updateSiteProfile(input: SiteProfile) {
       linkedin: input.linkedin,
       resume: input.resume,
       githubUsername: input.githubUsername,
+      photo: input.photo,
+      photoShape: input.photoShape,
     })
     .where(eq(siteProfile.id, 1));
 }
@@ -290,7 +301,11 @@ export async function getTimelineEntry(id: number): Promise<TimelineEntry | unde
 export async function insertTimelineEntry(input: Omit<TimelineEntry, "id" | "position">) {
   const db = await getDb();
   const [current] = await db.select({ value: max(timelineEntries.position) }).from(timelineEntries);
-  await db.insert(timelineEntries).values({ ...input, position: (current?.value ?? -1) + 1 });
+  const [row] = await db
+    .insert(timelineEntries)
+    .values({ ...input, position: (current?.value ?? -1) + 1 })
+    .returning({ id: timelineEntries.id });
+  return row.id;
 }
 
 export async function updateTimelineEntry(id: number, input: Omit<TimelineEntry, "id" | "position">) {
@@ -331,12 +346,16 @@ export async function getSkill(id: number): Promise<StoredSkill | undefined> {
 export async function insertSkill(input: Omit<StoredSkill, "id" | "position">) {
   const db = await getDb();
   const [current] = await db.select({ value: max(skills.position) }).from(skills);
-  await db.insert(skills).values({
-    name: input.name,
-    iconSlug: input.iconSlug,
-    color: input.color,
-    position: (current?.value ?? -1) + 1,
-  });
+  const [row] = await db
+    .insert(skills)
+    .values({
+      name: input.name,
+      iconSlug: input.iconSlug,
+      color: input.color,
+      position: (current?.value ?? -1) + 1,
+    })
+    .returning({ id: skills.id });
+  return row.id;
 }
 
 export async function updateSkill(id: number, input: Omit<StoredSkill, "id" | "position">) {
@@ -352,10 +371,21 @@ export async function deleteSkill(id: number) {
   await db.delete(skills).where(eq(skills.id, id));
 }
 
-export async function listProjects(): Promise<StoredProject[]> {
+export async function listProjects(filter?: {
+  showOnSite?: boolean;
+  showOnResume?: boolean;
+}): Promise<StoredProject[]> {
   const db = await getDb();
   const rows = await db.select().from(projects).orderBy(asc(projects.position), asc(projects.id));
-  return rows.map(toProject);
+  return rows
+    .map(toProject)
+    .filter((project) => {
+      if (filter?.showOnSite !== undefined && project.showOnSite !== filter.showOnSite) return false;
+      if (filter?.showOnResume !== undefined && project.showOnResume !== filter.showOnResume) {
+        return false;
+      }
+      return true;
+    });
 }
 
 export async function getProject(id: number): Promise<StoredProject | undefined> {
@@ -368,16 +398,26 @@ export async function insertProject(input: Omit<StoredProject, "id" | "position"
   const db = await getDb();
   const [current] = await db.select({ value: max(projects.position) }).from(projects);
   const position = (current?.value ?? -1) + 1;
-  await db.insert(projects).values({
-    title: input.title,
-    description: input.description,
-    stack: JSON.stringify(input.stack),
-    href: input.href,
-    repo: input.repo,
-    image: input.image,
-    mark: input.mark,
-    position,
-  });
+  const [row] = await db
+    .insert(projects)
+    .values({
+      title: input.title,
+      description: input.description,
+      stack: JSON.stringify(input.stack),
+      href: input.href,
+      repo: input.repo,
+      image: input.image,
+      mark: input.mark,
+      showOnSite: input.showOnSite ? 1 : 0,
+      showOnResume: input.showOnResume ? 1 : 0,
+      position,
+    })
+    .returning({ id: projects.id });
+  if (row?.id) return row.id;
+
+  const [latest] = await db.select({ id: max(projects.id) }).from(projects);
+  if (latest?.id) return latest.id;
+  throw new Error("Could not create project.");
 }
 
 export async function updateProject(id: number, input: Omit<StoredProject, "id" | "position">) {
@@ -392,6 +432,8 @@ export async function updateProject(id: number, input: Omit<StoredProject, "id" 
       repo: input.repo,
       image: input.image,
       mark: input.mark,
+      showOnSite: input.showOnSite ? 1 : 0,
+      showOnResume: input.showOnResume ? 1 : 0,
     })
     .where(eq(projects.id, id));
 }

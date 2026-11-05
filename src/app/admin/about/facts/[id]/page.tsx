@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { saveFact } from "@/app/admin/about/actions";
 import { FactEditForm } from "@/components/admin/SimpleTextForm";
+import { AdminFormSkeleton } from "@/components/LoadingSkeletons";
 import { getAboutFact } from "@/db";
 import { io } from "next/cache";
 
@@ -29,7 +30,7 @@ async function EditFact({ id }: { id: string }) {
 export default async function EditFactPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return (
-    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
+    <Suspense fallback={<AdminFormSkeleton />}>
       <EditFact id={id} />
     </Suspense>
   );
