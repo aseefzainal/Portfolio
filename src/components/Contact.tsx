@@ -1,14 +1,17 @@
 import { ContactEffect } from "@/components/ClientEffects";
 import { SectionTitle } from "@/components/SectionTitle";
-import { profile } from "@/data/profile";
+import { getSiteProfile } from "@/db";
+import { io } from "next/cache";
 
-const links = [
-  { href: `mailto:${profile.email}`, label: "Email", text: profile.email, external: false },
-  { href: profile.github, label: "GitHub", text: "Projects and contribution history.", external: true },
-  { href: profile.linkedin, label: "LinkedIn", text: "Work history and a direct message.", external: true },
-];
+export async function Contact() {
+  await io();
+  const profile = await getSiteProfile();
+  const links = [
+    { href: `mailto:${profile.email}`, label: "Email", text: profile.email, external: false },
+    { href: profile.github, label: "GitHub", text: "Projects and contribution history.", external: true },
+    { href: profile.linkedin, label: "LinkedIn", text: "Work history and a direct message.", external: true },
+  ];
 
-export function Contact() {
   return (
     <section id="contact" className="px-5 py-16 sm:py-24">
       <div className="mx-auto max-w-5xl">

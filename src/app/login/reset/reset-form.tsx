@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { resetPassword, type ResetState } from "@/app/login/reset/actions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 const initial: ResetState = { error: "" };
 
@@ -12,37 +17,42 @@ export function ResetForm({ token }: { token: string }) {
   return (
     <form action={action} className="grid gap-4">
       <input type="hidden" name="token" value={token} />
-      <label className="grid gap-2 text-sm font-medium">
-        New password
-        <input
+      <div className="grid gap-2">
+        <Label htmlFor="password">New password</Label>
+        <Input
+          id="password"
           name="password"
           type="password"
           required
           minLength={8}
           autoComplete="new-password"
-          className="h-10 rounded-md border border-stone-300 bg-white px-3 font-normal dark:border-white/15 dark:bg-stone-950"
+          className="h-10"
         />
-      </label>
-      <label className="grid gap-2 text-sm font-medium">
-        Confirm password
-        <input
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="confirm">Confirm password</Label>
+        <Input
+          id="confirm"
           name="confirm"
           type="password"
           required
           minLength={8}
           autoComplete="new-password"
-          className="h-10 rounded-md border border-stone-300 bg-white px-3 font-normal dark:border-white/15 dark:bg-stone-950"
+          className="h-10"
         />
-      </label>
-      {state.error ? <p className="text-sm text-red-700 dark:text-red-300">{state.error}</p> : null}
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-10 rounded-md bg-teal-800 text-sm font-medium text-white disabled:opacity-60 dark:bg-teal-300 dark:text-stone-950"
-      >
+      </div>
+      {state.error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{state.error}</AlertDescription>
+        </Alert>
+      ) : null}
+      <Button type="submit" disabled={pending} className="h-10 w-full">
         {pending ? "Saving…" : "Update password"}
-      </button>
-      <Link href="/login" className="text-center text-sm text-teal-800 hover:underline dark:text-teal-300">
+      </Button>
+      <Link
+        href="/login"
+        className={cn(buttonVariants({ variant: "link" }), "h-auto justify-center p-0")}
+      >
         Back to sign in
       </Link>
     </form>

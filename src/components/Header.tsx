@@ -1,18 +1,23 @@
 import { Logo } from "@/components/Logo";
 import { HeaderEffect } from "@/components/ClientEffects";
-import { profile } from "@/data/profile";
+import { getSiteProfile } from "@/db";
+import { io } from "next/cache";
 
 const links = [
   { href: "#about", id: "about", label: "About" },
   { href: "#experience", id: "experience", label: "Experience" },
   { href: "#education", id: "education", label: "Education" },
+  { href: "#certificates", id: "certificates", label: "Certificates" },
   { href: "#projects", id: "projects", label: "Projects" },
   { href: "#skills", id: "skills", label: "Skills" },
   { href: "#contributions", id: "contributions", label: "GitHub" },
   { href: "#contact", id: "contact", label: "Contact" },
 ];
 
-export function Header() {
+export async function Header() {
+  await io();
+  const profile = await getSiteProfile();
+
   return (
     <header data-header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-4 px-5">
