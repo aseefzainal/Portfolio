@@ -5,9 +5,11 @@ import {
   deleteProject,
   deleteSkill,
   deleteTimelineEntry,
+  getSiteProfile,
   insertProject,
   insertSkill,
   insertTimelineEntry,
+  setResumePublished,
   updateProject,
   updateSiteProfile,
   updateSkill,
@@ -17,7 +19,7 @@ import type { TimelineKind } from "@/db/schema";
 import { isHttpUrl, isProfilePhoto, readId, requireAdmin } from "@/lib/admin";
 import { pathForKind } from "@/lib/timeline-admin";
 
-export type StudioState = { error: string; message: string; id?: number };
+export type StudioState = { error: string; message: string; id?: number; published?: boolean };
 
 function revalidateStudio(kind?: TimelineKind) {
   revalidatePath("/");
@@ -67,6 +69,7 @@ export async function saveStudioProfile(
   if (!isProfilePhoto(photo)) errors.push("Photo must be a compressed JPEG, PNG, or WebP image.");
   if (errors.length) return { error: errors.join(" "), message: "" };
 
+  const current = await getSiteProfile();
   await updateSiteProfile({
     name,
     role,
@@ -79,9 +82,30 @@ export async function saveStudioProfile(
     githubUsername,
     photo,
     photoShape,
+    resumePublished: current.resumePublished,
   });
   revalidateStudio();
   return { error: "", message: "Profile saved." };
+}
+
+export async function publishStudioResume(
+  _state: StudioState,
+  _formData: FormData,
+): Promise<StudioState> {
+  await requireAdmin();
+  await setResumePublished(true);
+  revalidateStudio();
+  return { error: "", message: "Resume published to the public page.", published: true };
+}
+
+export async function unpublishStudioResume(
+  _state: StudioState,
+  _formData: FormData,
+): Promise<StudioState> {
+  await requireAdmin();
+  await setResumePublished(false);
+  revalidateStudio();
+  return { error: "", message: "Resume unpublished from the public page.", published: false };
 }
 
 export async function saveStudioTimelineEntry(

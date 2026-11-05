@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PublishResumeButton } from "@/components/admin/resume/PublishResumeButton";
 import { ResumeStudio } from "@/components/admin/resume/ResumeStudio";
 import { parseResumeTab, type ResumeDraft } from "@/components/admin/resume/types";
 import { ResumeStudioSkeleton } from "@/components/LoadingSkeletons";
@@ -32,11 +33,16 @@ async function ResumeStudioLoader({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Resume</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Edit profile, experience, education, certificates, skills, and projects here. Toggle what
-        appears on the homepage vs the resume. The preview updates as you type.
-      </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Resume</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Edit profile, experience, education, certificates, skills, and projects here. When it
+            looks right, publish it to the public resume page.
+          </p>
+        </div>
+        <PublishResumeButton initiallyPublished={profile.resumePublished} />
+      </div>
       <div className="mt-6">
         <ResumeStudio initial={initial} initialTab={parseResumeTab(tab)} />
       </div>

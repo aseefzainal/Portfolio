@@ -43,6 +43,7 @@ export const siteProfile = sqliteTable("site_profile", {
   githubUsername: text("github_username").notNull(),
   photo: text("photo").notNull().default(""),
   photoShape: text("photo_shape").notNull().default("circle"),
+  resumePublished: integer("resume_published").notNull().default(0),
 });
 
 export const aboutParagraphs = sqliteTable("about_paragraphs", {

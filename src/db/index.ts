@@ -61,6 +61,7 @@ export type SiteProfile = {
   githubUsername: string;
   photo: string;
   photoShape: "circle" | "rounded" | "square";
+  resumePublished: boolean;
 };
 
 export type AboutParagraph = {
@@ -203,6 +204,7 @@ export async function getSiteProfile(): Promise<SiteProfile> {
     githubUsername: row.githubUsername,
     photo: row.photo ?? "",
     photoShape: shape === "rounded" || shape === "square" ? shape : "circle",
+    resumePublished: row.resumePublished !== 0,
   };
 }
 
@@ -222,7 +224,16 @@ export async function updateSiteProfile(input: SiteProfile) {
       githubUsername: input.githubUsername,
       photo: input.photo,
       photoShape: input.photoShape,
+      resumePublished: input.resumePublished ? 1 : 0,
     })
+    .where(eq(siteProfile.id, 1));
+}
+
+export async function setResumePublished(published: boolean) {
+  const db = await getDb();
+  await db
+    .update(siteProfile)
+    .set({ resumePublished: published ? 1 : 0 })
     .where(eq(siteProfile.id, 1));
 }
 

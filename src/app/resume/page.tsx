@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Logo } from "@/components/Logo";
+import { ResumePreview } from "@/components/admin/resume/ResumePreview";
+import type { ResumeDraft } from "@/components/admin/resume/types";
 import { HeaderEffect } from "@/components/ClientEffects";
+import { Logo } from "@/components/Logo";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ResumeEffect } from "@/components/ResumeEffect";
-import { getSiteProfile } from "@/db";
 import { profile as fallbackProfile } from "@/data/profile";
+import { getSiteProfile, listProjects, listSkills, listTimelineEntries } from "@/db";
 import { io } from "next/cache";
 
 export const metadata: Metadata = {
@@ -16,8 +17,23 @@ export const metadata: Metadata = {
 
 async function ResumeContent() {
   await io();
-  const profile = await getSiteProfile();
-  const fileName = `${profile.name.replace(/\s+/g, "-")}-Resume.pdf`;
+  const [profile, experience, education, certificates, skills, projects] = await Promise.all([
+    getSiteProfile(),
+    listTimelineEntries("work"),
+    listTimelineEntries("education"),
+    listTimelineEntries("certificate"),
+    listSkills(),
+    listProjects(),
+  ]);
+
+  const draft: ResumeDraft = {
+    profile,
+    experience,
+    education,
+    certificates,
+    skills,
+    projects,
+  };
 
   return (
     <>
@@ -42,32 +58,33 @@ async function ResumeContent() {
         <div className="mx-auto w-full max-w-[210mm]">
           <div className="mb-4 flex items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">Resume</p>
-            <a
-              href={profile.resume}
-              download={fileName}
-              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-            >
-              Download PDF
-            </a>
-          </div>
-          <div
-            data-sheet
-            data-src={profile.resume}
-            className="relative aspect-[210/297] w-full overflow-hidden bg-white shadow-[0_18px_50px_rgb(0_0_0/0.14)] ring-1 ring-black/10 dark:ring-white/15"
-          >
-            <canvas className="h-full w-full object-contain" aria-label={`${profile.name} resume`} />
-            <p
-              data-resume-fallback
-              hidden
-              className="absolute inset-0 grid place-items-center px-6 text-center text-sm text-neutral-600"
-            >
-              The preview could not be shown.{" "}
-              <a href={profile.resume} className="font-medium text-neutral-900 underline underline-offset-4">
-                Open the PDF
+            {profile.resumePublished && profile.resume ? (
+              <a
+                href={profile.resume}
+                download={`${profile.name.replace(/\s+/g, "-")}-Resume.pdf`}
+                className="inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium hover:bg-accent"
+              >
+                Download PDF
               </a>
-            </p>
-            <ResumeEffect />
+            ) : null}
           </div>
+
+          {profile.resumePublished ? (
+            <ResumePreview draft={draft} />
+          ) : (
+            <div className="rounded-sm border border-border bg-muted/30 px-6 py-16 text-center">
+              <p className="text-sm font-medium">Resume is not published yet.</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                The public resume page will show the studio version once it is published from admin.
+              </p>
+              <Link
+                href="/"
+                className="mt-6 inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium hover:bg-accent"
+              >
+                Back to home
+              </Link>
+            </div>
+          )}
         </div>
       </main>
     </>

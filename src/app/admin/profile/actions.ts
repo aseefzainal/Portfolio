@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateSiteProfile } from "@/db";
+import { getSiteProfile, updateSiteProfile } from "@/db";
 import { isHttpUrl, isProfilePhoto, requireAdmin } from "@/lib/admin";
 
 export type ProfileFormState = { error: string; message: string };
@@ -37,6 +37,7 @@ export async function saveProfile(_state: ProfileFormState, formData: FormData):
 
   if (errors.length) return { error: errors.join(" "), message: "" };
 
+  const current = await getSiteProfile();
   await updateSiteProfile({
     name,
     role,
@@ -49,6 +50,7 @@ export async function saveProfile(_state: ProfileFormState, formData: FormData):
     githubUsername,
     photo,
     photoShape,
+    resumePublished: current.resumePublished,
   });
 
   revalidatePath("/");

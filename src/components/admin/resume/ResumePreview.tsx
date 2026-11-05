@@ -280,66 +280,96 @@ function computeSpacers(measure: HTMLElement, pageHeight: number): Record<string
   return next;
 }
 
+/** Fixed A4 canvas so studio preview and public /resume paginate identically. */
+const A4_WIDTH_PX = 794;
+const A4_HEIGHT_PX = Math.round((A4_WIDTH_PX * 297) / 210);
+
 export function ResumePreview({ draft }: { draft: ResumeDraft }) {
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
-  const [pageHeight, setPageHeight] = useState(0);
+  const [scale, setScale] = useState(1);
   const [pageCount, setPageCount] = useState(1);
   const [spacers, setSpacers] = useState<Record<string, number>>({});
 
   useLayoutEffect(() => {
-    const sheet = sheetRef.current;
-    const measure = measureRef.current;
-    if (!sheet || !measure) return;
+    const frame = frameRef.current;
+    if (!frame) return;
 
-    const run = () => {
-      const height = sheet.clientHeight;
-      if (height <= 0) return;
-
-      flushSync(() => {
-        setPageHeight(height);
-        setSpacers({});
-      });
-
-      const next = computeSpacers(measureRef.current ?? measure, height);
-
-      flushSync(() => {
-        setSpacers((prev) => (sameSpacers(prev, next) ? prev : next));
-      });
-
-      const finalMeasure = measureRef.current ?? measure;
-      setPageCount(Math.max(1, Math.ceil(finalMeasure.scrollHeight / height)));
+    const updateScale = () => {
+      const width = frame.clientWidth;
+      if (width <= 0) return;
+      setScale(Math.min(1, width / A4_WIDTH_PX));
     };
 
-    run();
-    const observer = new ResizeObserver(run);
-    observer.observe(sheet);
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(frame);
     return () => observer.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    const measure = measureRef.current;
+    if (!measure) return;
+
+    flushSync(() => {
+      setSpacers({});
+    });
+
+    const next = computeSpacers(measureRef.current ?? measure, A4_HEIGHT_PX);
+
+    flushSync(() => {
+      setSpacers((prev) => (sameSpacers(prev, next) ? prev : next));
+    });
+
+    const finalMeasure = measureRef.current ?? measure;
+    setPageCount(Math.max(1, Math.ceil(finalMeasure.scrollHeight / A4_HEIGHT_PX)));
   }, [draft]);
 
   return (
-    <div className="space-y-4">
-      {Array.from({ length: pageCount }, (_, index) => (
-        <div key={index}>
-          {pageCount > 1 ? (
-            <p className="mb-1.5 text-xs text-muted-foreground">
-              Page {index + 1} of {pageCount}
-            </p>
-          ) : null}
-          <div
-            ref={index === 0 ? sheetRef : undefined}
-            className="relative aspect-[210/297] overflow-hidden rounded-sm border border-border bg-white"
-          >
+    <div ref={frameRef} className="relative w-full">
+      {/* Unscaled measure host — keeps pagination independent of display width. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0"
+        style={{ width: A4_WIDTH_PX }}
+      >
+        <div ref={measureRef}>
+          <ResumeBody draft={draft} spacers={spacers} />
+        </div>
+      </div>
+
+      <div
+        className="flex flex-col"
+        style={{ width: A4_WIDTH_PX * scale, gap: `${Math.max(8, 16 * scale)}px` }}
+      >
+        {Array.from({ length: pageCount }, (_, index) => (
+          <div key={index}>
+            {pageCount > 1 ? (
+              <p className="mb-1.5 text-xs text-muted-foreground">
+                Page {index + 1} of {pageCount}
+              </p>
+            ) : null}
             <div
-              ref={index === 0 ? measureRef : undefined}
-              className="w-full"
-              style={pageHeight ? { transform: `translateY(-${index * pageHeight}px)` } : undefined}
+              className="relative overflow-hidden"
+              style={{ width: A4_WIDTH_PX * scale, height: A4_HEIGHT_PX * scale }}
             >
-              <ResumeBody draft={draft} spacers={spacers} />
+              <div
+                className="overflow-hidden rounded-sm border border-border bg-white"
+                style={{
+                  width: A4_WIDTH_PX,
+                  height: A4_HEIGHT_PX,
+                  transform: `scale(${scale})`,
+                  transformOrigin: "top left",
+                }}
+              >
+                <div style={{ transform: `translateY(-${index * A4_HEIGHT_PX}px)` }}>
+                  <ResumeBody draft={draft} spacers={spacers} />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
