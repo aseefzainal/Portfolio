@@ -3,53 +3,56 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { login } from "@/app/login/actions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(login, { error: "" });
 
   return (
     <form action={action} className="grid gap-4">
-      <label className="grid gap-2 text-sm font-medium">
-        Email
-        <input
+      <div className="grid gap-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
           name="email"
           type="email"
           required
           autoComplete="username"
-          className="h-10 rounded-md border border-stone-300 bg-white px-3 font-normal dark:border-white/15 dark:bg-stone-950"
+          className="h-10"
         />
-      </label>
-      <label className="grid gap-2 text-sm font-medium">
-        Password
-        <input
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
           name="password"
           type="password"
           required
           autoComplete="current-password"
-          className="h-10 rounded-md border border-stone-300 bg-white px-3 font-normal dark:border-white/15 dark:bg-stone-950"
+          className="h-10"
         />
-      </label>
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <label className="flex items-center gap-2 font-medium">
-          <input
-            name="rememberMe"
-            type="checkbox"
-            className="size-4 rounded border-stone-300 text-teal-800 dark:border-white/15"
-          />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <Label className="font-normal">
+          <Checkbox id="rememberMe" name="rememberMe" value="on" />
           Remember me
-        </label>
-        <Link href="/login/forgot" className="text-teal-800 hover:underline dark:text-teal-300">
+        </Label>
+        <Link href="/login/forgot" className="text-sm text-primary underline-offset-4 hover:underline">
           Forgot password?
         </Link>
       </div>
-      {state.error ? <p className="text-sm text-red-700 dark:text-red-300">{state.error}</p> : null}
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-10 rounded-md bg-teal-800 text-sm font-medium text-white disabled:opacity-60 dark:bg-teal-300 dark:text-stone-950"
-      >
+      {state.error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{state.error}</AlertDescription>
+        </Alert>
+      ) : null}
+      <Button type="submit" disabled={pending} className="h-10 w-full">
         {pending ? "Signing in…" : "Sign in"}
-      </button>
+      </Button>
     </form>
   );
 }

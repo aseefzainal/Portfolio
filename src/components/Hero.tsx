@@ -1,13 +1,16 @@
 import Link from "next/link";
-import { profile } from "@/data/profile";
+import { getSiteProfile } from "@/db";
+import { io } from "next/cache";
 
-const actions = [
-  { href: profile.github, label: "GitHub", external: true, primary: true },
-  { href: profile.linkedin, label: "LinkedIn", external: true, primary: false },
-  { href: "/resume", label: "Resume", external: false, primary: false },
-];
+export async function Hero() {
+  await io();
+  const profile = await getSiteProfile();
+  const actions = [
+    { href: profile.github, label: "GitHub", external: true, primary: true },
+    { href: profile.linkedin, label: "LinkedIn", external: true, primary: false },
+    { href: "/resume", label: "Resume", external: false, primary: false },
+  ];
 
-export function Hero() {
   return (
     <section id="top" className="px-5 pt-16 pb-12 sm:pt-24 sm:pb-16">
       <div className="mx-auto max-w-3xl">
