@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 import { About } from "@/components/About";
 import { Contact } from "@/components/Contact";
+import { Contributions } from "@/components/Contributions";
+import { Education } from "@/components/Education";
+import { Experience } from "@/components/Experience";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
@@ -14,16 +17,19 @@ export default function Home() {
       <main>
         <Hero />
         <About />
+        <Experience />
+        <Education />
         <Suspense
           fallback={
-            <section className="border-y border-stone-200 px-5 py-16 dark:border-white/10">
-              <p className="mx-auto max-w-5xl text-sm text-stone-500">Loading projects…</p>
+            <section className="px-5 py-12 sm:py-16">
+              <p className="mx-auto max-w-3xl text-sm text-muted-foreground">Loading projects…</p>
             </section>
           }
         >
           <Projects />
         </Suspense>
         <Skills />
+        <Contributions />
         <Contact />
       </main>
       <Footer />
