@@ -1,6 +1,7 @@
 "use client";
 
 import { removeProjectAction } from "@/app/admin/actions";
+import { Button } from "@/components/ui/button";
 
 export function DeleteProjectButton({ id }: { id: number }) {
   return (
@@ -11,9 +12,9 @@ export function DeleteProjectButton({ id }: { id: number }) {
       }}
     >
       <input type="hidden" name="id" value={id} />
-      <button type="submit" className="text-sm font-medium text-red-700 hover:underline dark:text-red-300">
+      <Button type="submit" variant="destructive" size="sm">
         Delete
-      </button>
+      </Button>
     </form>
   );
 }

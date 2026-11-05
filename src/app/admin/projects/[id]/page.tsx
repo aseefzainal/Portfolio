@@ -15,7 +15,7 @@ async function EditProject({ id }: { id: string }) {
 
   return (
     <div>
-      <Link href="/admin/projects" className="text-sm font-medium text-teal-800 hover:underline dark:text-teal-300">
+      <Link href="/admin/projects" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
         Back to projects
       </Link>
       <h2 className="mt-4 text-lg font-semibold">Edit project</h2>
@@ -29,7 +29,7 @@ async function EditProject({ id }: { id: string }) {
 export default async function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return (
-    <Suspense fallback={<p className="text-sm text-stone-500">Loading project…</p>}>
+    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading project…</p>}>
       <EditProject id={id} />
     </Suspense>
   );

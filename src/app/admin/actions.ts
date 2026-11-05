@@ -2,24 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
 import { deleteProject as removeProject, insertProject, updateProject } from "@/db";
+import { isHttpUrl, readId, requireAdmin, type FormState } from "@/lib/admin";
 
-export type FormState = { error: string };
-
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
-}
-
-function isHttpUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
+export type { FormState };
 
 function readProject(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
@@ -30,6 +16,8 @@ function readProject(formData: FormData) {
     .filter(Boolean);
   const href = String(formData.get("href") ?? "").trim();
   const repo = String(formData.get("repo") ?? "").trim();
+  const image = String(formData.get("image") ?? "").trim();
+  const mark = String(formData.get("mark") ?? "").trim();
   const errors: string[] = [];
 
   if (!title) errors.push("Title is required.");
@@ -37,13 +25,7 @@ function readProject(formData: FormData) {
   if (href && !isHttpUrl(href)) errors.push("Live URL must start with http:// or https://.");
   if (repo && !isHttpUrl(repo)) errors.push("Repo URL must start with http:// or https://.");
 
-  return { title, description, stack, href, repo, error: errors.join(" ") };
-}
-
-function readId(formData: FormData) {
-  const id = Number(formData.get("id"));
-  if (!Number.isInteger(id) || id < 1) return undefined;
-  return id;
+  return { title, description, stack, href, repo, image, mark, error: errors.join(" ") };
 }
 
 export async function createProject(_state: FormState, formData: FormData): Promise<FormState> {

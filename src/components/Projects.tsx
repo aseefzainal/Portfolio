@@ -16,6 +16,12 @@ export async function Projects() {
           <ul className="mt-2">
             {projects.map((project) => (
               <li key={project.id} data-reveal className="flex gap-4 border-b py-6">
+                {project.image ? (
+                  <div className="flex size-14 shrink-0 items-center justify-center rounded-md border bg-white p-1.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={project.image} alt="" className="max-h-full max-w-full object-contain" />
+                  </div>
+                ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                     <h3 className="font-medium">{project.title}</h3>

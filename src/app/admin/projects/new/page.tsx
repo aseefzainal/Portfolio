@@ -5,7 +5,7 @@ import { ProjectForm } from "@/components/admin/ProjectForm";
 export default function NewProjectPage() {
   return (
     <div>
-      <Link href="/admin/projects" className="text-sm font-medium text-teal-800 hover:underline dark:text-teal-300">
+      <Link href="/admin/projects" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
         Back to projects
       </Link>
       <h2 className="mt-4 text-lg font-semibold">Add project</h2>

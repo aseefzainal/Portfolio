@@ -1,11 +1,14 @@
 import { SectionTitle } from "@/components/SectionTitle";
-import { profile } from "@/data/profile";
+import { getSiteProfile } from "@/db";
+import { io } from "next/cache";
 
-const username = "aseefzainal";
-const lightChart = `https://ghchart.rshah.org/171717/${username}`;
-const darkChart = `https://ghchart.rshah.org/a3a3a3/${username}`;
+export async function Contributions() {
+  await io();
+  const profile = await getSiteProfile();
+  const username = profile.githubUsername;
+  const lightChart = `https://ghchart.rshah.org/171717/${username}`;
+  const darkChart = `https://ghchart.rshah.org/a3a3a3/${username}`;
 
-export function Contributions() {
   return (
     <section id="contributions" className="px-5 py-12 sm:py-16">
       <div className="mx-auto max-w-3xl">

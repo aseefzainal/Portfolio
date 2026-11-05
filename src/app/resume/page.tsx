@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Logo } from "@/components/Logo";
 import { HeaderEffect } from "@/components/ClientEffects";
 import { ResumeEffect } from "@/components/ResumeEffect";
-import { profile } from "@/data/profile";
-
-const fileName = "Aseef-Zainal-Resume.pdf";
+import { getSiteProfile } from "@/db";
+import { profile as fallbackProfile } from "@/data/profile";
+import { io } from "next/cache";
 
 export const metadata: Metadata = {
-  title: `${profile.name} · Resume`,
-  description: `Resume for ${profile.name}.`,
+  title: `${fallbackProfile.name} · Resume`,
+  description: `Resume for ${fallbackProfile.name}.`,
 };
 
-export default function ResumePage() {
+async function ResumeContent() {
+  await io();
+  const profile = await getSiteProfile();
+  const fileName = `${profile.name.replace(/\s+/g, "-")}-Resume.pdf`;
+
   return (
     <>
       <header data-header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur">
@@ -65,5 +70,13 @@ export default function ResumePage() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function ResumePage() {
+  return (
+    <Suspense fallback={<p className="px-5 py-16 text-sm text-muted-foreground">Loading resume…</p>}>
+      <ResumeContent />
+    </Suspense>
   );
 }
