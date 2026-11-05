@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { About } from "@/components/About";
 import { Contact } from "@/components/Contact";
 import { Contributions } from "@/components/Contributions";
@@ -18,7 +19,15 @@ export default function Home() {
         <About />
         <Experience />
         <Education />
-        <Projects />
+        <Suspense
+          fallback={
+            <section className="px-5 py-12 sm:py-16">
+              <p className="mx-auto max-w-3xl text-sm text-muted-foreground">Loading projects…</p>
+            </section>
+          }
+        >
+          <Projects />
+        </Suspense>
         <Skills />
         <Contributions />
         <Contact />
