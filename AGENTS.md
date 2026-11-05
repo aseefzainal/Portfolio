@@ -1,3 +1,5 @@
+This portfolio is a Next.js site. Pages live in `src/app`, components in `src/components`, and the contact API in `src/app/api/contact/route.ts`.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know
