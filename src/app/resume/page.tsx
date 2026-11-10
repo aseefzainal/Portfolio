@@ -56,17 +56,8 @@ async function ResumeContent() {
       </header>
       <main className="px-5 py-8 sm:py-12">
         <div className="mx-auto w-full max-w-[210mm]">
-          <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="mb-4">
             <p className="text-sm text-muted-foreground">Resume</p>
-            {profile.resumePublished && profile.resume ? (
-              <a
-                href={profile.resume}
-                download={`${profile.name.replace(/\s+/g, "-")}-Resume.pdf`}
-                className="inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium hover:bg-accent"
-              >
-                Download PDF
-              </a>
-            ) : null}
           </div>
 
           {profile.resumePublished ? (

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { deleteProject as removeProject, insertProject, updateProject } from "@/db";
-import { isHttpUrl, readId, requireAdmin, type FormState } from "@/lib/admin";
+import { isHttpUrl, isProjectImage, readId, requireAdmin, type FormState } from "@/lib/admin";
 
 export type { FormState };
 
@@ -26,6 +26,9 @@ function readProject(formData: FormData) {
   if (!description) errors.push("Description is required.");
   if (href && !isHttpUrl(href)) errors.push("Live URL must start with http:// or https://.");
   if (repo && !isHttpUrl(repo)) errors.push("Repo URL must start with http:// or https://.");
+  if (!isProjectImage(image)) {
+    errors.push("Project image must be a compressed JPEG, PNG, or WebP upload.");
+  }
 
   return {
     title,

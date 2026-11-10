@@ -86,6 +86,19 @@ export type TimelineEntry = {
   detail: string;
   href: string;
   position: number;
+  location: string;
+  locationType: string;
+  employmentType: string;
+  isCurrent: boolean;
+  startMonth: string;
+  startYear: string;
+  endMonth: string;
+  endYear: string;
+  fieldOfStudy: string;
+  grade: string;
+  activities: string;
+  showOnSite: boolean;
+  showOnResume: boolean;
 };
 
 export type StoredSkill = {
@@ -136,6 +149,43 @@ function toTimeline(row: typeof timelineEntries.$inferSelect): TimelineEntry {
     detail: row.detail,
     href: row.href,
     position: row.position,
+    location: row.location ?? "",
+    locationType: row.locationType ?? "",
+    employmentType: row.employmentType ?? "",
+    isCurrent: (row.isCurrent ?? 0) !== 0,
+    startMonth: row.startMonth ?? "",
+    startYear: row.startYear ?? "",
+    endMonth: row.endMonth ?? "",
+    endYear: row.endYear ?? "",
+    fieldOfStudy: row.fieldOfStudy ?? "",
+    grade: row.grade ?? "",
+    activities: row.activities ?? "",
+    showOnSite: (row.showOnSite ?? 1) !== 0,
+    showOnResume: (row.showOnResume ?? 1) !== 0,
+  };
+}
+
+function timelineValues(input: Omit<TimelineEntry, "id" | "position">) {
+  return {
+    kind: input.kind,
+    title: input.title,
+    place: input.place,
+    period: input.period,
+    detail: input.detail,
+    href: input.href,
+    location: input.location,
+    locationType: input.locationType,
+    employmentType: input.employmentType,
+    isCurrent: input.isCurrent ? 1 : 0,
+    startMonth: input.startMonth,
+    startYear: input.startYear,
+    endMonth: input.endMonth,
+    endYear: input.endYear,
+    fieldOfStudy: input.fieldOfStudy,
+    grade: input.grade,
+    activities: input.activities,
+    showOnSite: input.showOnSite ? 1 : 0,
+    showOnResume: input.showOnResume ? 1 : 0,
   };
 }
 
@@ -291,7 +341,10 @@ export async function deleteAboutFact(id: number) {
   await db.delete(aboutFacts).where(eq(aboutFacts.id, id));
 }
 
-export async function listTimelineEntries(kind?: TimelineKind): Promise<TimelineEntry[]> {
+export async function listTimelineEntries(
+  kind?: TimelineKind,
+  filter?: { showOnSite?: boolean; showOnResume?: boolean },
+): Promise<TimelineEntry[]> {
   const db = await getDb();
   const rows = kind
     ? await db
@@ -300,7 +353,11 @@ export async function listTimelineEntries(kind?: TimelineKind): Promise<Timeline
         .where(eq(timelineEntries.kind, kind))
         .orderBy(asc(timelineEntries.position), asc(timelineEntries.id))
     : await db.select().from(timelineEntries).orderBy(asc(timelineEntries.position), asc(timelineEntries.id));
-  return rows.map(toTimeline);
+  return rows.map(toTimeline).filter((entry) => {
+    if (filter?.showOnSite !== undefined && entry.showOnSite !== filter.showOnSite) return false;
+    if (filter?.showOnResume !== undefined && entry.showOnResume !== filter.showOnResume) return false;
+    return true;
+  });
 }
 
 export async function getTimelineEntry(id: number): Promise<TimelineEntry | undefined> {
@@ -314,19 +371,46 @@ export async function insertTimelineEntry(input: Omit<TimelineEntry, "id" | "pos
   const [current] = await db.select({ value: max(timelineEntries.position) }).from(timelineEntries);
   const [row] = await db
     .insert(timelineEntries)
-    .values({ ...input, position: (current?.value ?? -1) + 1 })
+    .values({ ...timelineValues(input), position: (current?.value ?? -1) + 1 })
     .returning({ id: timelineEntries.id });
   return row.id;
 }
 
 export async function updateTimelineEntry(id: number, input: Omit<TimelineEntry, "id" | "position">) {
   const db = await getDb();
-  await db.update(timelineEntries).set(input).where(eq(timelineEntries.id, id));
+  await db.update(timelineEntries).set(timelineValues(input)).where(eq(timelineEntries.id, id));
 }
 
 export async function deleteTimelineEntry(id: number) {
   const db = await getDb();
   await db.delete(timelineEntries).where(eq(timelineEntries.id, id));
+}
+
+export async function setTimelineEntryPositions(orderedIds: number[]) {
+  const db = await getDb();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      db.update(timelineEntries).set({ position: index }).where(eq(timelineEntries.id, id)),
+    ),
+  );
+}
+
+export async function setProjectPositions(orderedIds: number[]) {
+  const db = await getDb();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      db.update(projects).set({ position: index }).where(eq(projects.id, id)),
+    ),
+  );
+}
+
+export async function setSkillPositions(orderedIds: number[]) {
+  const db = await getDb();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      db.update(skills).set({ position: index }).where(eq(skills.id, id)),
+    ),
+  );
 }
 
 export async function listSkills(): Promise<StoredSkill[]> {

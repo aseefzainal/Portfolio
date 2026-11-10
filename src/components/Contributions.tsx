@@ -1,11 +1,14 @@
 import { SectionTitle } from "@/components/SectionTitle";
 import { getSiteProfile } from "@/db";
+import { githubUsernameFromUrl } from "@/lib/github";
 import { io } from "next/cache";
 
 export async function Contributions() {
   await io();
   const profile = await getSiteProfile();
-  const username = profile.githubUsername;
+  const username = profile.githubUsername || githubUsernameFromUrl(profile.github);
+  if (!username) return null;
+
   const lightChart = `https://ghchart.rshah.org/171717/${username}`;
   const darkChart = `https://ghchart.rshah.org/a3a3a3/${username}`;
 
@@ -17,7 +20,7 @@ export async function Contributions() {
           Contributions over the past year on {username}.
         </p>
         <a
-          href={profile.github}
+          href={profile.github || `https://github.com/${username}`}
           target="_blank"
           rel="noopener noreferrer"
           data-reveal

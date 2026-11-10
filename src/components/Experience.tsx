@@ -4,7 +4,7 @@ import { io } from "next/cache";
 
 export async function Experience() {
   await io();
-  const items = await listTimelineEntries("work");
+  const items = await listTimelineEntries("work", { showOnSite: true });
 
   return (
     <section id="experience" className="px-5 py-12 sm:py-16">
@@ -23,8 +23,15 @@ export async function Experience() {
                 <p className="text-sm text-muted-foreground">{item.period}</p>
                 <div>
                   <h3 className="font-medium">{item.title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{item.place}</p>
-                  <p className="mt-2 text-sm leading-6">{item.detail}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {[item.place, item.employmentType].filter(Boolean).join(" · ")}
+                  </p>
+                  {item.location || item.locationType ? (
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      {[item.location, item.locationType].filter(Boolean).join(" · ")}
+                    </p>
+                  ) : null}
+                  {item.detail ? <p className="mt-2 text-sm leading-6">{item.detail}</p> : null}
                 </div>
               </li>
             ))}

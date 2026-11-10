@@ -1,10 +1,17 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { GripVerticalIcon } from "lucide-react";
 import type { ResumeDraft } from "@/components/admin/resume/types";
 import { profilePhotoShapeClass } from "@/lib/profile-photo";
 import { cn } from "@/lib/utils";
+
+export type ResumeReorderHandlers = {
+  experience?: (fromIndex: number, toIndex: number) => void;
+  education?: (fromIndex: number, toIndex: number) => void;
+  certificates?: (fromIndex: number, toIndex: number) => void;
+  projects?: (fromIndex: number, toIndex: number) => void;
+};
 
 function Section({
   title,
@@ -55,21 +62,104 @@ function Keep({
   );
 }
 
+function SortableRow({
+  index,
+  keepId,
+  spacer = 0,
+  enabled,
+  onMove,
+  children,
+}: {
+  index: number;
+  keepId: string;
+  spacer?: number;
+  enabled?: boolean;
+  onMove?: (fromIndex: number, toIndex: number) => void;
+  children: React.ReactNode;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const [over, setOver] = useState(false);
+
+  if (!enabled || !onMove) {
+    return (
+      <li>
+        <Keep id={keepId} spacer={spacer}>
+          {children}
+        </Keep>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      {/* Page-break spacer stays outside the handle so the grip sticks to content. */}
+      {spacer > 0 ? <div aria-hidden className="pointer-events-none" style={{ height: spacer }} /> : null}
+      <div
+        data-resume-keep="item"
+        data-resume-key={keepId}
+        draggable
+        onDragStart={(event) => {
+          event.dataTransfer.setData("text/plain", String(index));
+          event.dataTransfer.effectAllowed = "move";
+          setDragging(true);
+        }}
+        onDragEnd={() => {
+          setDragging(false);
+          setOver(false);
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          setOver(true);
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(event) => {
+          event.preventDefault();
+          setOver(false);
+          const from = Number(event.dataTransfer.getData("text/plain"));
+          if (Number.isInteger(from)) onMove(from, index);
+        }}
+        className={cn(
+          "relative rounded-sm transition-[box-shadow,opacity]",
+          dragging && "opacity-40",
+          over && "ring-1 ring-neutral-400",
+        )}
+      >
+        <span
+          aria-hidden
+          className="absolute top-0.5 -left-5 flex h-5 w-4 cursor-grab items-center justify-center text-neutral-400 active:cursor-grabbing"
+        >
+          <GripVerticalIcon className="size-3.5" />
+        </span>
+        {children}
+      </div>
+    </li>
+  );
+}
+
 function ResumeBody({
   draft,
   spacers,
+  reorder,
 }: {
   draft: ResumeDraft;
   spacers: Record<string, number>;
+  reorder?: ResumeReorderHandlers;
 }) {
   const { profile, experience, education, certificates, skills, projects } = draft;
+  const resumeExperience = experience.filter((item) => item.showOnResume);
+  const resumeEducation = education.filter((item) => item.showOnResume);
   const resumeProjects = projects.filter((project) => project.showOnResume);
   const links = [profile.email, profile.location, profile.github, profile.linkedin].filter(Boolean);
+  const sortable = Boolean(reorder);
 
   return (
     <div
       data-resume-body
-      className="px-10 py-10 text-[12px] leading-5 text-neutral-900 sm:px-11 sm:py-11"
+      className={cn(
+        "px-10 py-10 text-[12px] leading-5 text-neutral-900 sm:px-11 sm:py-11",
+        sortable && "pl-12 sm:pl-12",
+      )}
     >
       <Keep id="header" kind="block" spacer={spacers.header ?? 0}>
         <header className="flex items-start gap-4">
@@ -100,46 +190,71 @@ function ResumeBody({
       ) : null}
 
       <Section title="Experience" keepKey="section-experience" spacer={spacers["section-experience"] ?? 0}>
-        {experience.length === 0 ? (
+        {resumeExperience.length === 0 ? (
           <Keep id="experience-empty" spacer={spacers["experience-empty"] ?? 0}>
             <p className="text-neutral-400">No experience yet.</p>
           </Keep>
         ) : (
           <ul className="space-y-4">
-            {experience.map((item) => (
-              <li key={item.id}>
-                <Keep id={`experience-${item.id}`} spacer={spacers[`experience-${item.id}`] ?? 0}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                    <p className="font-medium">{item.title || "Title"}</p>
-                    <p className="text-[11px] text-neutral-500">{item.period}</p>
-                  </div>
-                  <p className="text-neutral-600">{item.place}</p>
-                  {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
-                </Keep>
-              </li>
+            {resumeExperience.map((item, index) => (
+              <SortableRow
+                key={item.id}
+                index={index}
+                keepId={`experience-${item.id}`}
+                spacer={spacers[`experience-${item.id}`] ?? 0}
+                enabled={Boolean(reorder?.experience)}
+                onMove={reorder?.experience}
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <p className="font-medium">{item.title || "Title"}</p>
+                  <p className="text-[11px] text-neutral-500">{item.period}</p>
+                </div>
+                <p className="text-neutral-600">
+                  {[item.place, item.employmentType].filter(Boolean).join(" · ") || "Company"}
+                </p>
+                {item.location || item.locationType ? (
+                  <p className="text-[11px] text-neutral-500">
+                    {[item.location, item.locationType].filter(Boolean).join(" · ")}
+                  </p>
+                ) : null}
+                {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
+              </SortableRow>
             ))}
           </ul>
         )}
       </Section>
 
       <Section title="Education" keepKey="section-education" spacer={spacers["section-education"] ?? 0}>
-        {education.length === 0 ? (
+        {resumeEducation.length === 0 ? (
           <Keep id="education-empty" spacer={spacers["education-empty"] ?? 0}>
             <p className="text-neutral-400">No education yet.</p>
           </Keep>
         ) : (
           <ul className="space-y-4">
-            {education.map((item) => (
-              <li key={item.id}>
-                <Keep id={`education-${item.id}`} spacer={spacers[`education-${item.id}`] ?? 0}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                    <p className="font-medium">{item.title || "Title"}</p>
-                    <p className="text-[11px] text-neutral-500">{item.period}</p>
-                  </div>
-                  <p className="text-neutral-600">{item.place}</p>
-                  {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
-                </Keep>
-              </li>
+            {resumeEducation.map((item, index) => (
+              <SortableRow
+                key={item.id}
+                index={index}
+                keepId={`education-${item.id}`}
+                spacer={spacers[`education-${item.id}`] ?? 0}
+                enabled={Boolean(reorder?.education)}
+                onMove={reorder?.education}
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <p className="font-medium">{item.place || "School"}</p>
+                  <p className="text-[11px] text-neutral-500">{item.period}</p>
+                </div>
+                {[item.title, item.fieldOfStudy].filter(Boolean).length > 0 ? (
+                  <p className="text-neutral-600">
+                    {[item.title, item.fieldOfStudy].filter(Boolean).join(", ")}
+                  </p>
+                ) : null}
+                {item.grade ? <p className="text-[11px] text-neutral-500">Grade: {item.grade}</p> : null}
+                {item.activities ? (
+                  <p className="mt-1 text-neutral-700">{item.activities}</p>
+                ) : null}
+                {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
+              </SortableRow>
             ))}
           </ul>
         )}
@@ -156,20 +271,25 @@ function ResumeBody({
           </Keep>
         ) : (
           <ul className="space-y-4">
-            {certificates.map((item) => (
-              <li key={item.id}>
-                <Keep id={`certificate-${item.id}`} spacer={spacers[`certificate-${item.id}`] ?? 0}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                    <p className="font-medium">{item.title || "Title"}</p>
-                    <p className="text-[11px] text-neutral-500">{item.period}</p>
-                  </div>
-                  <p className="text-neutral-600">{item.place}</p>
-                  {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
-                  {item.href ? (
-                    <p className="mt-1 text-[11px] text-neutral-500 break-all">{item.href}</p>
-                  ) : null}
-                </Keep>
-              </li>
+            {certificates.map((item, index) => (
+              <SortableRow
+                key={item.id}
+                index={index}
+                keepId={`certificate-${item.id}`}
+                spacer={spacers[`certificate-${item.id}`] ?? 0}
+                enabled={Boolean(reorder?.certificates)}
+                onMove={reorder?.certificates}
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <p className="font-medium">{item.title || "Title"}</p>
+                  <p className="text-[11px] text-neutral-500">{item.period}</p>
+                </div>
+                <p className="text-neutral-600">{item.place}</p>
+                {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
+                {item.href ? (
+                  <p className="mt-1 text-[11px] text-neutral-500 break-all">{item.href}</p>
+                ) : null}
+              </SortableRow>
             ))}
           </ul>
         )}
@@ -196,20 +316,25 @@ function ResumeBody({
           </Keep>
         ) : (
           <ul className="space-y-4">
-            {resumeProjects.map((project) => (
-              <li key={project.id}>
-                <Keep id={`project-${project.id}`} spacer={spacers[`project-${project.id}`] ?? 0}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                    <p className="font-medium">{project.title || "Title"}</p>
-                    {project.stack.length > 0 ? (
-                      <p className="text-[11px] text-neutral-500">{project.stack.join(" · ")}</p>
-                    ) : null}
-                  </div>
-                  {project.description ? (
-                    <p className="mt-1 text-neutral-700">{project.description}</p>
+            {resumeProjects.map((project, index) => (
+              <SortableRow
+                key={project.id}
+                index={index}
+                keepId={`project-${project.id}`}
+                spacer={spacers[`project-${project.id}`] ?? 0}
+                enabled={Boolean(reorder?.projects)}
+                onMove={reorder?.projects}
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <p className="font-medium">{project.title || "Title"}</p>
+                  {project.stack.length > 0 ? (
+                    <p className="text-[11px] text-neutral-500">{project.stack.join(" · ")}</p>
                   ) : null}
-                </Keep>
-              </li>
+                </div>
+                {project.description ? (
+                  <p className="mt-1 text-neutral-700">{project.description}</p>
+                ) : null}
+              </SortableRow>
             ))}
           </ul>
         )}
@@ -269,7 +394,6 @@ function computeSpacers(measure: HTMLElement, pageHeight: number): Record<string
       }
     }
 
-    // Land past the page cut plus the same top padding used on page 1.
     const push = pageBottom - targetTop + pageInsetTop;
     if (push <= 0.5) continue;
     next[targetKey] = (next[targetKey] ?? 0) + push;
@@ -284,12 +408,23 @@ function computeSpacers(measure: HTMLElement, pageHeight: number): Record<string
 const A4_WIDTH_PX = 794;
 const A4_HEIGHT_PX = Math.round((A4_WIDTH_PX * 297) / 210);
 
-export function ResumePreview({ draft }: { draft: ResumeDraft }) {
+export function ResumePreview({
+  draft,
+  focusSection,
+  reorder,
+}: {
+  draft: ResumeDraft;
+  focusSection?: string;
+  /** When set, studio uses a continuous scroll preview with drag handles. */
+  reorder?: ResumeReorderHandlers;
+}) {
   const frameRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [pageCount, setPageCount] = useState(1);
+  const [contentHeight, setContentHeight] = useState(A4_HEIGHT_PX);
   const [spacers, setSpacers] = useState<Record<string, number>>({});
+  const studioMode = Boolean(reorder);
 
   useLayoutEffect(() => {
     const frame = frameRef.current;
@@ -308,29 +443,89 @@ export function ResumePreview({ draft }: { draft: ResumeDraft }) {
   }, []);
 
   useLayoutEffect(() => {
-    const measure = measureRef.current;
-    if (!measure) return;
+    let cancelled = false;
+    let applyFrame = 0;
+    let countFrame = 0;
 
-    flushSync(() => {
-      setSpacers({});
-    });
+    setSpacers({});
 
-    const next = computeSpacers(measureRef.current ?? measure, A4_HEIGHT_PX);
+    applyFrame = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const measure = measureRef.current;
+      if (!measure) return;
 
-    flushSync(() => {
+      const next = computeSpacers(measure, A4_HEIGHT_PX);
       setSpacers((prev) => (sameSpacers(prev, next) ? prev : next));
+
+      countFrame = requestAnimationFrame(() => {
+        if (cancelled) return;
+        const finalMeasure = measureRef.current;
+        if (!finalMeasure) return;
+        setContentHeight(finalMeasure.scrollHeight);
+        setPageCount(Math.max(1, Math.ceil(finalMeasure.scrollHeight / A4_HEIGHT_PX)));
+      });
     });
 
-    const finalMeasure = measureRef.current ?? measure;
-    setPageCount(Math.max(1, Math.ceil(finalMeasure.scrollHeight / A4_HEIGHT_PX)));
-  }, [draft]);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(applyFrame);
+      cancelAnimationFrame(countFrame);
+    };
+  }, [draft, studioMode]);
+
+  useEffect(() => {
+    if (!focusSection) return;
+
+    let cancelled = false;
+    const frame = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const frameEl = frameRef.current;
+      const measure = measureRef.current;
+      if (!frameEl || !measure) return;
+
+      const scrollParent = frameEl.parentElement;
+      if (!scrollParent) return;
+
+      const target = measure.querySelector<HTMLElement>(`[data-resume-key="${focusSection}"]`);
+      if (!target) return;
+
+      if (studioMode) {
+        const y = target.getBoundingClientRect().top - measure.getBoundingClientRect().top;
+        const top = Math.max(0, y * scale - 12);
+        scrollParent.scrollTo({ top, behavior: "smooth" });
+        return;
+      }
+
+      const measureTop = measure.getBoundingClientRect().top;
+      const y = target.getBoundingClientRect().top - measureTop;
+      const pageIndex = Math.min(
+        Math.max(0, pageCount - 1),
+        Math.max(0, Math.floor(y / A4_HEIGHT_PX)),
+      );
+      const offsetInPage = y - pageIndex * A4_HEIGHT_PX;
+      const activePage = frameEl.querySelector<HTMLElement>(`[data-preview-page="${pageIndex}"]`);
+      if (!activePage) return;
+
+      const pageOffset =
+        activePage.getBoundingClientRect().top -
+        scrollParent.getBoundingClientRect().top +
+        scrollParent.scrollTop;
+      const top = Math.max(0, pageOffset + offsetInPage * scale - 12);
+      scrollParent.scrollTo({ top, behavior: "smooth" });
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [focusSection, pageCount, scale, studioMode]);
 
   return (
-    <div ref={frameRef} className="relative w-full">
+    <div ref={frameRef} className="relative w-full max-w-full overflow-x-hidden">
       {/* Unscaled measure host — keeps pagination independent of display width. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0"
+        className="pointer-events-none fixed top-0 -left-[10000px] -z-10 opacity-0"
         style={{ width: A4_WIDTH_PX }}
       >
         <div ref={measureRef}>
@@ -338,38 +533,74 @@ export function ResumePreview({ draft }: { draft: ResumeDraft }) {
         </div>
       </div>
 
-      <div
-        className="flex flex-col"
-        style={{ width: A4_WIDTH_PX * scale, gap: `${Math.max(8, 16 * scale)}px` }}
-      >
-        {Array.from({ length: pageCount }, (_, index) => (
-          <div key={index}>
-            {pageCount > 1 ? (
-              <p className="mb-1.5 text-xs text-muted-foreground">
-                Page {index + 1} of {pageCount}
-              </p>
-            ) : null}
+      {studioMode ? (
+        <div className="max-w-full" style={{ width: A4_WIDTH_PX * scale }}>
+          {pageCount > 1 ? (
+            <p className="mb-1.5 text-xs text-muted-foreground">
+              {pageCount} pages · drag items to reorder
+            </p>
+          ) : (
+            <p className="mb-1.5 text-xs text-muted-foreground">Drag items to reorder</p>
+          )}
+          <div
+            className="relative overflow-hidden rounded-sm border border-border bg-white"
+            style={{ width: A4_WIDTH_PX * scale, height: contentHeight * scale }}
+          >
             <div
-              className="relative overflow-hidden"
-              style={{ width: A4_WIDTH_PX * scale, height: A4_HEIGHT_PX * scale }}
+              style={{
+                width: A4_WIDTH_PX,
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+              }}
             >
-              <div
-                className="overflow-hidden rounded-sm border border-border bg-white"
-                style={{
-                  width: A4_WIDTH_PX,
-                  height: A4_HEIGHT_PX,
-                  transform: `scale(${scale})`,
-                  transformOrigin: "top left",
-                }}
-              >
-                <div style={{ transform: `translateY(-${index * A4_HEIGHT_PX}px)` }}>
-                  <ResumeBody draft={draft} spacers={spacers} />
-                </div>
+              <div className="relative">
+                <ResumeBody draft={draft} spacers={spacers} reorder={reorder} />
+                {Array.from({ length: Math.max(0, pageCount - 1) }, (_, index) => (
+                  <div
+                    key={index}
+                    aria-hidden
+                    className="pointer-events-none absolute right-0 left-0 border-t border-dashed border-neutral-300"
+                    style={{ top: (index + 1) * A4_HEIGHT_PX }}
+                  />
+                ))}
               </div>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div
+          className="flex max-w-full flex-col"
+          style={{ width: A4_WIDTH_PX * scale, gap: `${Math.max(8, 16 * scale)}px` }}
+        >
+          {Array.from({ length: pageCount }, (_, index) => (
+            <div key={index} data-preview-page={index}>
+              {pageCount > 1 ? (
+                <p className="mb-1.5 text-xs text-muted-foreground">
+                  Page {index + 1} of {pageCount}
+                </p>
+              ) : null}
+              <div
+                className="relative overflow-hidden"
+                style={{ width: A4_WIDTH_PX * scale, height: A4_HEIGHT_PX * scale }}
+              >
+                <div
+                  className="overflow-hidden rounded-sm border border-border bg-white"
+                  style={{
+                    width: A4_WIDTH_PX,
+                    height: A4_HEIGHT_PX,
+                    transform: `scale(${scale})`,
+                    transformOrigin: "top left",
+                  }}
+                >
+                  <div style={{ transform: `translateY(-${index * A4_HEIGHT_PX}px)` }}>
+                    <ResumeBody draft={draft} spacers={spacers} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

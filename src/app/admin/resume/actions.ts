@@ -9,14 +9,19 @@ import {
   insertProject,
   insertSkill,
   insertTimelineEntry,
+  setProjectPositions,
   setResumePublished,
+  setSkillPositions,
+  setTimelineEntryPositions,
   updateProject,
   updateSiteProfile,
   updateSkill,
   updateTimelineEntry,
 } from "@/db";
 import type { TimelineKind } from "@/db/schema";
-import { isHttpUrl, isProfilePhoto, readId, requireAdmin } from "@/lib/admin";
+import { isHttpUrl, isProfilePhoto, isProjectImage, readId, requireAdmin } from "@/lib/admin";
+import { githubUsernameFromUrl } from "@/lib/github";
+import { formatTimelinePeriod } from "@/lib/timeline-period";
 import { pathForKind } from "@/lib/timeline-admin";
 
 export type StudioState = { error: string; message: string; id?: number; published?: boolean };
@@ -49,8 +54,6 @@ export async function saveStudioProfile(
   const email = String(formData.get("email") ?? "").trim();
   const github = String(formData.get("github") ?? "").trim();
   const linkedin = String(formData.get("linkedin") ?? "").trim();
-  const resume = String(formData.get("resume") ?? "").trim();
-  const githubUsername = String(formData.get("githubUsername") ?? "").trim();
   const photo = String(formData.get("photo") ?? "").trim();
   const photoShapeRaw = String(formData.get("photoShape") ?? "circle").trim();
   const photoShape =
@@ -62,8 +65,6 @@ export async function saveStudioProfile(
   if (!summary) errors.push("Summary is required.");
   if (!location) errors.push("Location is required.");
   if (!email) errors.push("Email is required.");
-  if (!githubUsername) errors.push("GitHub username is required.");
-  if (!resume) errors.push("Resume path is required.");
   if (github && !isHttpUrl(github)) errors.push("GitHub URL must start with http:// or https://.");
   if (linkedin && !isHttpUrl(linkedin)) errors.push("LinkedIn URL must start with http:// or https://.");
   if (!isProfilePhoto(photo)) errors.push("Photo must be a compressed JPEG, PNG, or WebP image.");
@@ -78,8 +79,8 @@ export async function saveStudioProfile(
     email,
     github,
     linkedin,
-    resume,
-    githubUsername,
+    resume: current.resume || "/resume",
+    githubUsername: githubUsernameFromUrl(github) || current.githubUsername,
     photo,
     photoShape,
     resumePublished: current.resumePublished,
@@ -117,21 +118,83 @@ export async function saveStudioTimelineEntry(
   const kind = readKind(formData.get("kind"));
   const title = String(formData.get("title") ?? "").trim();
   const place = String(formData.get("place") ?? "").trim();
-  const period = String(formData.get("period") ?? "").trim();
   const detail = String(formData.get("detail") ?? "").trim();
   const href = String(formData.get("href") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim();
+  const locationType = String(formData.get("locationType") ?? "").trim();
+  const employmentType = String(formData.get("employmentType") ?? "").trim();
+  const fieldOfStudy = String(formData.get("fieldOfStudy") ?? "").trim();
+  const grade = String(formData.get("grade") ?? "").trim();
+  const activities = String(formData.get("activities") ?? "").trim();
+  const isCurrent = formData.get("isCurrent") === "on";
+  const showOnSite = formData.get("showOnSite") === "on";
+  const showOnResume = formData.get("showOnResume") === "on";
+  const startMonth = String(formData.get("startMonth") ?? "").trim();
+  const startYear = String(formData.get("startYear") ?? "").trim();
+  const endMonth = isCurrent ? "" : String(formData.get("endMonth") ?? "").trim();
+  const endYear = isCurrent ? "" : String(formData.get("endYear") ?? "").trim();
+  const rawPeriod = String(formData.get("period") ?? "").trim();
   const rawId = Number(formData.get("id"));
   const errors: string[] = [];
+  const usesStructuredDates = kind === "work" || kind === "education";
+  const usesVisibility = kind === "work" || kind === "education";
 
   if (!kind) errors.push("Kind is required.");
-  if (!title) errors.push("Title is required.");
-  if (!place) errors.push("Place is required.");
-  if (!period) errors.push("Period is required.");
-  if (!detail) errors.push("Detail is required.");
+  if (kind === "education") {
+    if (!place) errors.push("School is required.");
+  } else {
+    if (!title) errors.push(kind === "work" ? "Job title is required." : "Title is required.");
+    if (!place) {
+      errors.push(kind === "work" ? "Company / organization is required." : "Place is required.");
+    }
+  }
+
+  const period = usesStructuredDates
+    ? formatTimelinePeriod({
+        startMonth,
+        startYear,
+        endMonth,
+        endYear,
+        isCurrent: kind === "work" ? isCurrent : false,
+        fallback: rawPeriod,
+      })
+    : rawPeriod;
+
+  if (kind === "work") {
+    if (!startYear) errors.push("Start year is required.");
+    if (!isCurrent && !endYear) errors.push("End year is required (or mark as current role).");
+  } else if (kind === "education") {
+    if (!startYear) errors.push("Start year is required.");
+    if (!endYear) errors.push("End year is required.");
+  } else {
+    if (!period) errors.push("Period is required.");
+    if (!detail) errors.push("Detail is required.");
+  }
+
   if (href && !isHttpUrl(href)) errors.push("URL must start with http:// or https://.");
   if (errors.length || !kind) return { error: errors.join(" ") || "Kind is required.", message: "" };
 
-  const payload = { kind, title, place, period, detail, href };
+  const payload = {
+    kind,
+    title,
+    place,
+    period,
+    detail,
+    href,
+    location: kind === "work" ? location : "",
+    locationType: kind === "work" ? locationType : "",
+    employmentType: kind === "work" ? employmentType : "",
+    isCurrent: kind === "work" ? isCurrent : false,
+    startMonth: usesStructuredDates ? startMonth : "",
+    startYear: usesStructuredDates ? startYear : "",
+    endMonth: usesStructuredDates ? endMonth : "",
+    endYear: usesStructuredDates ? endYear : "",
+    fieldOfStudy: kind === "education" ? fieldOfStudy : "",
+    grade: kind === "education" ? grade : "",
+    activities: kind === "education" ? activities : "",
+    showOnSite: usesVisibility ? showOnSite : true,
+    showOnResume: usesVisibility ? showOnResume : true,
+  };
 
   if (Number.isInteger(rawId) && rawId > 0) {
     await updateTimelineEntry(rawId, payload);
@@ -208,6 +271,9 @@ export async function saveStudioProject(
   if (!description) errors.push("Description is required.");
   if (href && !isHttpUrl(href)) errors.push("Live URL must start with http:// or https://.");
   if (repo && !isHttpUrl(repo)) errors.push("Repo URL must start with http:// or https://.");
+  if (!isProjectImage(image)) {
+    errors.push("Project image must be a compressed JPEG, PNG, or WebP upload.");
+  }
   if (errors.length) return { error: errors.join(" "), message: "" };
 
   const payload = {
@@ -244,4 +310,37 @@ export async function deleteStudioProject(formData: FormData): Promise<StudioSta
   if (id) await deleteProject(id);
   revalidateStudio();
   return { error: "", message: "Project deleted." };
+}
+
+function readOrderedIds(formData: FormData) {
+  return String(formData.get("ids") ?? "")
+    .split(",")
+    .map((value) => Number(value.trim()))
+    .filter((id) => Number.isInteger(id) && id > 0);
+}
+
+export async function reorderStudioTimelineEntries(formData: FormData): Promise<StudioState> {
+  await requireAdmin();
+  const kind = readKind(formData.get("kind"));
+  const ids = readOrderedIds(formData);
+  if (!kind) return { error: "Kind is required.", message: "" };
+  if (ids.length) await setTimelineEntryPositions(ids);
+  revalidateStudio(kind);
+  return { error: "", message: "Order saved." };
+}
+
+export async function reorderStudioProjects(formData: FormData): Promise<StudioState> {
+  await requireAdmin();
+  const ids = readOrderedIds(formData);
+  if (ids.length) await setProjectPositions(ids);
+  revalidateStudio();
+  return { error: "", message: "Order saved." };
+}
+
+export async function reorderStudioSkills(formData: FormData): Promise<StudioState> {
+  await requireAdmin();
+  const ids = readOrderedIds(formData);
+  if (ids.length) await setSkillPositions(ids);
+  revalidateStudio();
+  return { error: "", message: "Order saved." };
 }

@@ -11,7 +11,7 @@ export const projects = sqliteTable("projects", {
   image: text("image").notNull().default(""),
   mark: text("mark").notNull().default(""),
   showOnSite: integer("show_on_site").notNull().default(1),
-  showOnResume: integer("show_on_resume").notNull().default(0),
+  showOnResume: integer("show_on_resume").notNull().default(1),
 });
 
 export const users = sqliteTable("users", {
@@ -68,6 +68,19 @@ export const timelineEntries = sqliteTable("timeline_entries", {
   detail: text("detail").notNull(),
   href: text("href").notNull().default(""),
   position: integer("position").notNull(),
+  location: text("location").notNull().default(""),
+  locationType: text("location_type").notNull().default(""),
+  employmentType: text("employment_type").notNull().default(""),
+  isCurrent: integer("is_current").notNull().default(0),
+  startMonth: text("start_month").notNull().default(""),
+  startYear: text("start_year").notNull().default(""),
+  endMonth: text("end_month").notNull().default(""),
+  endYear: text("end_year").notNull().default(""),
+  fieldOfStudy: text("field_of_study").notNull().default(""),
+  grade: text("grade").notNull().default(""),
+  activities: text("activities").notNull().default(""),
+  showOnSite: integer("show_on_site").notNull().default(1),
+  showOnResume: integer("show_on_resume").notNull().default(1),
 });
 
 export const skills = sqliteTable("skills", {
