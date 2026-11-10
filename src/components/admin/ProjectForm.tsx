@@ -75,10 +75,6 @@ export function ProjectForm({
         ) : null}
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="mark">Mark</Label>
-        <Input id="mark" name="mark" defaultValue={project?.mark ?? ""} placeholder="ILMS" className="h-10" />
-      </div>
-      <div className="grid gap-2">
         <Label htmlFor="href">Live URL</Label>
         <Input
           id="href"

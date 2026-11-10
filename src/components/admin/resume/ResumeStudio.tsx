@@ -1208,7 +1208,6 @@ function ProjectsEditor({
       href: "",
       repo: "",
       image: "",
-      mark: "",
       position: items.length,
       showOnSite: true,
       showOnResume: true,
@@ -1287,7 +1286,6 @@ function ProjectsEditor({
             formData.set("description", selected.description);
             formData.set("stack", selected.stack.join(", "));
             formData.set("image", selected.image);
-            formData.set("mark", selected.mark);
             formData.set("href", selected.href);
             formData.set("repo", selected.repo);
             formData.set("showOnSite", selected.showOnSite ? "on" : "");
@@ -1339,16 +1337,6 @@ function ProjectsEditor({
             value={selected.stack}
             onChange={(stack) => patchSelected({ stack })}
           />
-          <div className="grid gap-2">
-            <Label htmlFor="project-mark">Mark</Label>
-            <Input
-              id="project-mark"
-              className="h-10"
-              placeholder="ILMS"
-              value={selected.mark}
-              onChange={(event) => patchSelected({ mark: event.target.value })}
-            />
-          </div>
           <div className="grid gap-2">
             <Label htmlFor="project-href">Live URL</Label>
             <Input

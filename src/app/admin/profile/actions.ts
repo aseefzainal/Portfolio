@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { getSiteProfile, updateSiteProfile } from "@/db";
 import { isHttpUrl, isProfilePhoto, requireAdmin } from "@/lib/admin";
-import { githubUsernameFromUrl } from "@/lib/github";
 
 export type ProfileFormState = { error: string; message: string };
 
@@ -43,8 +42,6 @@ export async function saveProfile(_state: ProfileFormState, formData: FormData):
     email,
     github,
     linkedin,
-    resume: current.resume || "/resume",
-    githubUsername: githubUsernameFromUrl(github) || current.githubUsername,
     photo,
     photoShape,
     resumePublished: current.resumePublished,

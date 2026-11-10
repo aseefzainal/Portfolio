@@ -20,7 +20,6 @@ import {
 } from "@/db";
 import type { TimelineKind } from "@/db/schema";
 import { isHttpUrl, isProfilePhoto, isProjectImage, readId, requireAdmin } from "@/lib/admin";
-import { githubUsernameFromUrl } from "@/lib/github";
 import { formatTimelinePeriod } from "@/lib/timeline-period";
 import { pathForKind } from "@/lib/timeline-admin";
 
@@ -79,8 +78,6 @@ export async function saveStudioProfile(
     email,
     github,
     linkedin,
-    resume: current.resume || "/resume",
-    githubUsername: githubUsernameFromUrl(github) || current.githubUsername,
     photo,
     photoShape,
     resumePublished: current.resumePublished,
@@ -261,7 +258,6 @@ export async function saveStudioProject(
   const href = String(formData.get("href") ?? "").trim();
   const repo = String(formData.get("repo") ?? "").trim();
   const image = String(formData.get("image") ?? "").trim();
-  const mark = String(formData.get("mark") ?? "").trim();
   const showOnSite = formData.get("showOnSite") === "on";
   const showOnResume = formData.get("showOnResume") === "on";
   const rawId = Number(formData.get("id"));
@@ -283,7 +279,6 @@ export async function saveStudioProject(
     href,
     repo,
     image,
-    mark,
     showOnSite,
     showOnResume,
   };

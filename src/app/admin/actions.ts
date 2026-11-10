@@ -17,7 +17,6 @@ function readProject(formData: FormData) {
   const href = String(formData.get("href") ?? "").trim();
   const repo = String(formData.get("repo") ?? "").trim();
   const image = String(formData.get("image") ?? "").trim();
-  const mark = String(formData.get("mark") ?? "").trim();
   const showOnSite = formData.get("showOnSite") === "on";
   const showOnResume = formData.get("showOnResume") === "on";
   const errors: string[] = [];
@@ -37,7 +36,6 @@ function readProject(formData: FormData) {
     href,
     repo,
     image,
-    mark,
     showOnSite,
     showOnResume,
     error: errors.join(" "),

@@ -6,7 +6,7 @@ import { io } from "next/cache";
 export async function Contributions() {
   await io();
   const profile = await getSiteProfile();
-  const username = profile.githubUsername || githubUsernameFromUrl(profile.github);
+  const username = githubUsernameFromUrl(profile.github);
   if (!username) return null;
 
   const lightChart = `https://ghchart.rshah.org/171717/${username}`;
