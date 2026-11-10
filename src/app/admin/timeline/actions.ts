@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { deleteTimelineEntry, insertTimelineEntry, updateTimelineEntry } from "@/db";
+import {
+  deleteTimelineEntry,
+  getTimelineEntry,
+  insertTimelineEntry,
+  updateTimelineEntry,
+} from "@/db";
 import type { TimelineKind } from "@/db/schema";
 import { isHttpUrl, readId, requireAdmin, type FormState } from "@/lib/admin";
 import { pathForKind } from "@/lib/timeline-admin";
@@ -48,6 +53,19 @@ export async function createTimelineEntry(_state: FormState, formData: FormData)
     period: entry.period,
     detail: entry.detail,
     href: entry.href,
+    location: "",
+    locationType: "",
+    employmentType: "",
+    isCurrent: false,
+    startMonth: "",
+    startYear: "",
+    endMonth: "",
+    endYear: "",
+    fieldOfStudy: "",
+    grade: "",
+    activities: "",
+    showOnSite: true,
+    showOnResume: true,
   });
   revalidateTimeline(entry.kind);
   redirect(pathForKind(entry.kind));
@@ -61,6 +79,7 @@ export async function saveTimelineEntry(_state: FormState, formData: FormData): 
   const entry = readEntry(formData);
   if (entry.error || !entry.kind) return { error: entry.error || "Kind is required." };
 
+  const existing = await getTimelineEntry(id);
   await updateTimelineEntry(id, {
     kind: entry.kind,
     title: entry.title,
@@ -68,6 +87,19 @@ export async function saveTimelineEntry(_state: FormState, formData: FormData): 
     period: entry.period,
     detail: entry.detail,
     href: entry.href,
+    location: existing?.location ?? "",
+    locationType: existing?.locationType ?? "",
+    employmentType: existing?.employmentType ?? "",
+    isCurrent: existing?.isCurrent ?? false,
+    startMonth: existing?.startMonth ?? "",
+    startYear: existing?.startYear ?? "",
+    endMonth: existing?.endMonth ?? "",
+    endYear: existing?.endYear ?? "",
+    fieldOfStudy: existing?.fieldOfStudy ?? "",
+    grade: existing?.grade ?? "",
+    activities: existing?.activities ?? "",
+    showOnSite: existing?.showOnSite ?? true,
+    showOnResume: existing?.showOnResume ?? true,
   });
   revalidateTimeline(entry.kind);
   redirect(pathForKind(entry.kind));

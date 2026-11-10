@@ -31,6 +31,16 @@ export function parseResumeTab(value: string | undefined): ResumeTab {
   return "profile";
 }
 
+/** Preview anchor keys matching `data-resume-key` on resume sections. */
+export const resumePreviewSectionByTab: Record<ResumeTab, string> = {
+  profile: "header",
+  experience: "section-experience",
+  education: "section-education",
+  certificates: "section-certificates",
+  skills: "section-skills",
+  projects: "section-projects",
+};
+
 export function nextTempId(items: { id: number }[]) {
   const min = items.reduce((acc, item) => Math.min(acc, item.id), 0);
   return Math.min(min, 0) - 1;

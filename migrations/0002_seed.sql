@@ -1,53 +1,12 @@
-ALTER TABLE projects ADD COLUMN image text NOT NULL DEFAULT '';
-ALTER TABLE projects ADD COLUMN mark text NOT NULL DEFAULT '';
+-- Seed data for fresh installs (local / new environments)
 
-CREATE TABLE site_profile (
-  id integer PRIMARY KEY CHECK (id = 1),
-  name text NOT NULL,
-  role text NOT NULL,
-  summary text NOT NULL,
-  location text NOT NULL,
-  email text NOT NULL,
-  github text NOT NULL,
-  linkedin text NOT NULL,
-  resume text NOT NULL,
-  github_username text NOT NULL
+INSERT INTO users (email, password_hash) VALUES (
+  'aseefzainal65@gmail.com',
+  '$2b$10$Kui2YY1yRjnuxubu.6uSHO5vXpF35l3AZ4W2hWvzcpWWVVJ0Sdmr2'
 );
 
-CREATE TABLE about_paragraphs (
-  id integer PRIMARY KEY AUTOINCREMENT,
-  body text NOT NULL,
-  position integer NOT NULL
-);
-
-CREATE TABLE about_facts (
-  id integer PRIMARY KEY AUTOINCREMENT,
-  title text NOT NULL,
-  text text NOT NULL,
-  position integer NOT NULL
-);
-
-CREATE TABLE timeline_entries (
-  id integer PRIMARY KEY AUTOINCREMENT,
-  kind text NOT NULL,
-  title text NOT NULL,
-  place text NOT NULL,
-  period text NOT NULL,
-  detail text NOT NULL,
-  href text NOT NULL DEFAULT '',
-  position integer NOT NULL
-);
-
-CREATE TABLE skills (
-  id integer PRIMARY KEY AUTOINCREMENT,
-  name text NOT NULL,
-  icon_slug text NOT NULL DEFAULT '',
-  color text NOT NULL DEFAULT '',
-  position integer NOT NULL
-);
-
-INSERT INTO site_profile (
-  id, name, role, summary, location, email, github, linkedin, resume, github_username
+INSERT INTO profiles (
+  id, name, role, summary, location, email, github, linkedin, photo, photo_shape, resume_published
 ) VALUES (
   1,
   'Aseef Zainal',
@@ -57,8 +16,9 @@ INSERT INTO site_profile (
   'aseefzainal65@gmail.com',
   'https://github.com/aseefzainal',
   'https://www.linkedin.com',
-  '/resume.pdf',
-  'aseefzainal'
+  '',
+  'circle',
+  0
 );
 
 INSERT INTO about_paragraphs (body, position) VALUES
@@ -71,30 +31,44 @@ INSERT INTO about_paragraphs (body, position) VALUES
     1
   );
 
-INSERT INTO about_facts (title, text, position) VALUES
+INSERT INTO about_highlights (title, text, position) VALUES
   ('Laravel', 'Systems, reports, and permissions', 0),
   ('Next.js', 'This portfolio, in public', 1),
   ('Malaysia', 'Based here', 2),
   ('Open', 'Freelance and full-time', 3);
 
-INSERT INTO timeline_entries (kind, title, place, period, detail, href, position) VALUES
+INSERT INTO resume_entries (
+  kind, title, place, period, detail, href, position,
+  location, location_type, employment_type, is_current,
+  start_month, start_year, end_month, end_year,
+  field_of_study, grade, activities, show_on_site, show_on_resume
+) VALUES
   (
     'work',
     'Full-Stack Developer',
     'FMZ Net Solutions · Freelance',
-    'Aug 2023 – Jul 2025',
+    'Aug 2023 – Dec 2025',
     'Freelance full-stack development across web applications.',
     '',
-    0
+    0,
+    '', '', 'Freelance', 0,
+    '08', '2023', '12', '2025',
+    '', '', '', 1, 1
   ),
   (
     'education',
-    'Bachelor in Information Technology (Honours)',
-    'Universiti Kuala Lumpur MIIT · Internet of Things',
+    'Bachelor of Science',
+    'Universiti Kuala Lumpur MIIT',
     'Sep 2022 – Jul 2025',
-    'CGPA 3.53. Completed with a final-year project and industrial training.',
+    'Completed with a final-year project and industrial training.',
     '',
-    1
+    1,
+    '', '', '', 0,
+    '09', '2022', '07', '2025',
+    'Bachelor In Information Technology (Honours) (Internet Of Things)',
+    '3.53',
+    '',
+    1, 1
   ),
   (
     'work',
@@ -103,16 +77,25 @@ INSERT INTO timeline_entries (kind, title, place, period, detail, href, position
     'Mar 2022 – Jul 2022',
     'Backend internship at the polytechnic, during the diploma in ICT.',
     '',
-    2
+    2,
+    '', '', 'Internship', 0,
+    '03', '2022', '07', '2022',
+    '', '', '', 1, 1
   ),
   (
     'education',
-    'Diploma in Information Technology and Communication Technology',
+    'Diploma',
     'Politeknik Muadzam Shah',
     'Jun 2019 – Aug 2022',
-    'CGPA 3.86.',
     '',
-    3
+    '',
+    3,
+    '', '', '', 0,
+    '06', '2019', '08', '2022',
+    'Information Technology and Communication Technology',
+    '3.86',
+    '',
+    1, 1
   );
 
 INSERT INTO skills (name, icon_slug, color, position) VALUES
@@ -126,9 +109,7 @@ INSERT INTO skills (name, icon_slug, color, position) VALUES
   ('Tailwind', 'siTailwindcss', '#06B6D4', 7),
   ('Git', 'siGit', '#F05032', 8);
 
-DELETE FROM projects;
-
-INSERT INTO projects (title, description, stack, href, repo, position, image, mark) VALUES
+INSERT INTO projects (title, description, stack, href, repo, position, image, show_on_site, show_on_resume) VALUES
   (
     'ILMS',
     'Integrated Land Management System. Staff record premise census and licensing, track billboards, and review coverage on maps and printable reports.',
@@ -137,7 +118,7 @@ INSERT INTO projects (title, description, stack, href, repo, position, image, ma
     '',
     0,
     '/projects/ilms.svg',
-    'ILMS'
+    1, 1
   ),
   (
     'DAMS',
@@ -147,7 +128,7 @@ INSERT INTO projects (title, description, stack, href, repo, position, image, ma
     '',
     1,
     '/projects/dams.png',
-    'DAMS'
+    1, 1
   ),
   (
     'Capital Park',
@@ -157,7 +138,7 @@ INSERT INTO projects (title, description, stack, href, repo, position, image, ma
     '',
     2,
     '/projects/capital-park.png',
-    'CP'
+    1, 1
   ),
   (
     'EPPP',
@@ -167,5 +148,5 @@ INSERT INTO projects (title, description, stack, href, repo, position, image, ma
     '',
     3,
     '/projects/eppp.png',
-    'EPPP'
+    1, 1
   );

@@ -72,20 +72,6 @@ export function ProfileForm({ profile }: { profile: SiteProfile }) {
         <Label htmlFor="linkedin">LinkedIn URL</Label>
         <Input id="linkedin" name="linkedin" type="url" defaultValue={profile.linkedin} className="h-10" />
       </div>
-      <div className="grid gap-2">
-        <Label htmlFor="resume">Resume path</Label>
-        <Input id="resume" name="resume" required defaultValue={profile.resume} className="h-10" />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="githubUsername">GitHub username</Label>
-        <Input
-          id="githubUsername"
-          name="githubUsername"
-          required
-          defaultValue={profile.githubUsername}
-          className="h-10"
-        />
-      </div>
       {state.error ? (
         <Alert variant="destructive">
           <AlertDescription>{state.error}</AlertDescription>

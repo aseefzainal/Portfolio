@@ -4,7 +4,7 @@ import { io } from "next/cache";
 
 export async function Education() {
   await io();
-  const items = await listTimelineEntries("education");
+  const items = await listTimelineEntries("education", { showOnSite: true });
 
   return (
     <section id="education" className="px-5 py-12 sm:py-16">
@@ -22,9 +22,19 @@ export async function Education() {
               >
                 <p className="text-sm text-muted-foreground">{item.period}</p>
                 <div>
-                  <h3 className="font-medium">{item.title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{item.place}</p>
-                  <p className="mt-2 text-sm leading-6">{item.detail}</p>
+                  <h3 className="font-medium">{item.place || "School"}</h3>
+                  {[item.title, item.fieldOfStudy].filter(Boolean).length > 0 ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {[item.title, item.fieldOfStudy].filter(Boolean).join(", ")}
+                    </p>
+                  ) : null}
+                  {item.grade ? (
+                    <p className="mt-1 text-sm text-muted-foreground">Grade: {item.grade}</p>
+                  ) : null}
+                  {item.activities ? (
+                    <p className="mt-1 text-sm text-muted-foreground">{item.activities}</p>
+                  ) : null}
+                  {item.detail ? <p className="mt-2 text-sm leading-6">{item.detail}</p> : null}
                 </div>
               </li>
             ))}

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { deleteProject as removeProject, insertProject, updateProject } from "@/db";
-import { isHttpUrl, readId, requireAdmin, type FormState } from "@/lib/admin";
+import { isHttpUrl, isProjectImage, readId, requireAdmin, type FormState } from "@/lib/admin";
 
 export type { FormState };
 
@@ -17,7 +17,6 @@ function readProject(formData: FormData) {
   const href = String(formData.get("href") ?? "").trim();
   const repo = String(formData.get("repo") ?? "").trim();
   const image = String(formData.get("image") ?? "").trim();
-  const mark = String(formData.get("mark") ?? "").trim();
   const showOnSite = formData.get("showOnSite") === "on";
   const showOnResume = formData.get("showOnResume") === "on";
   const errors: string[] = [];
@@ -26,6 +25,9 @@ function readProject(formData: FormData) {
   if (!description) errors.push("Description is required.");
   if (href && !isHttpUrl(href)) errors.push("Live URL must start with http:// or https://.");
   if (repo && !isHttpUrl(repo)) errors.push("Repo URL must start with http:// or https://.");
+  if (!isProjectImage(image)) {
+    errors.push("Project image must be a compressed JPEG, PNG, or WebP upload.");
+  }
 
   return {
     title,
@@ -34,7 +36,6 @@ function readProject(formData: FormData) {
     href,
     repo,
     image,
-    mark,
     showOnSite,
     showOnResume,
     error: errors.join(" "),
