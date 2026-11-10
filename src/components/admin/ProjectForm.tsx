@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { FormState } from "@/lib/admin";
 import type { StoredProject } from "@/db";
+import { ProjectImageField } from "@/components/admin/ProjectImageField";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,9 +21,18 @@ export function ProjectForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, { error: "" });
+  const [image, setImage] = useState(project?.image ?? "");
+  const [imageError, setImageError] = useState("");
+  const [imageBusy, setImageBusy] = useState(false);
 
   return (
-    <form action={formAction} className="grid max-w-xl gap-4">
+    <form
+      action={(formData) => {
+        formData.set("image", image);
+        formAction(formData);
+      }}
+      className="grid max-w-xl gap-4"
+    >
       {project ? <input type="hidden" name="id" value={project.id} /> : null}
       <div className="grid gap-2">
         <Label htmlFor="title">Title</Label>
@@ -49,18 +59,20 @@ export function ProjectForm({
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="image">Image path</Label>
-        <Input
-          id="image"
-          name="image"
-          defaultValue={project?.image ?? ""}
-          placeholder="/projects/example.png"
-          className="h-10"
+        <ProjectImageField
+          image={image}
+          disabled={imageBusy || pending}
+          onImageChange={setImage}
+          onImageClear={() => setImage("")}
+          onError={setImageError}
+          onBusyChange={setImageBusy}
         />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="mark">Mark</Label>
-        <Input id="mark" name="mark" defaultValue={project?.mark ?? ""} placeholder="ILMS" className="h-10" />
+        {imageBusy ? <p className="text-sm text-muted-foreground">Compressing image…</p> : null}
+        {imageError ? (
+          <Alert variant="destructive">
+            <AlertDescription>{imageError}</AlertDescription>
+          </Alert>
+        ) : null}
       </div>
       <div className="grid gap-2">
         <Label htmlFor="href">Live URL</Label>
@@ -90,7 +102,7 @@ export function ProjectForm({
           Show on homepage
         </Label>
         <Label className="font-normal">
-          <Checkbox name="showOnResume" value="on" defaultChecked={project?.showOnResume ?? false} />
+          <Checkbox name="showOnResume" value="on" defaultChecked={project?.showOnResume ?? true} />
           Show on resume
         </Label>
       </div>
@@ -99,7 +111,7 @@ export function ProjectForm({
           <AlertDescription>{state.error}</AlertDescription>
         </Alert>
       ) : null}
-      <Button type="submit" disabled={pending} className="h-10 w-fit">
+      <Button type="submit" disabled={pending || imageBusy} className="h-10 w-fit">
         {pending ? "Saving…" : submitLabel}
       </Button>
     </form>

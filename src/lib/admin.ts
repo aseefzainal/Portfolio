@@ -30,3 +30,13 @@ export function isProfilePhoto(value: string) {
   if (value.length > PHOTO_MAX_CHARS) return false;
   return /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(value);
 }
+
+const PROJECT_IMAGE_MAX_CHARS = 450_000;
+
+/** Accepts uploaded data URLs, or legacy public paths like /projects/foo.png. */
+export function isProjectImage(value: string) {
+  if (!value) return true;
+  if (value.startsWith("/") && !value.includes("://") && value.length < 500) return true;
+  if (value.length > PROJECT_IMAGE_MAX_CHARS) return false;
+  return /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(value);
+}

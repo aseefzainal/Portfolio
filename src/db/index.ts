@@ -2,13 +2,13 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { and, asc, eq, isNull, max } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import {
-  aboutFacts,
+  aboutHighlights,
   aboutParagraphs,
-  passwordResetTokens,
+  passwordResets,
+  profiles,
   projects,
-  siteProfile,
+  resumeEntries,
   skills,
-  timelineEntries,
   users,
   type TimelineKind,
 } from "@/db/schema";
@@ -19,11 +19,11 @@ async function getDb() {
     schema: {
       projects,
       users,
-      passwordResetTokens,
-      siteProfile,
+      passwordResets,
+      profiles,
       aboutParagraphs,
-      aboutFacts,
-      timelineEntries,
+      aboutHighlights,
+      resumeEntries,
       skills,
     },
   });
@@ -38,7 +38,6 @@ export type StoredProject = {
   repo: string;
   position: number;
   image: string;
-  mark: string;
   showOnSite: boolean;
   showOnResume: boolean;
 };
@@ -57,8 +56,6 @@ export type SiteProfile = {
   email: string;
   github: string;
   linkedin: string;
-  resume: string;
-  githubUsername: string;
   photo: string;
   photoShape: "circle" | "rounded" | "square";
   resumePublished: boolean;
@@ -86,6 +83,19 @@ export type TimelineEntry = {
   detail: string;
   href: string;
   position: number;
+  location: string;
+  locationType: string;
+  employmentType: string;
+  isCurrent: boolean;
+  startMonth: string;
+  startYear: string;
+  endMonth: string;
+  endYear: string;
+  fieldOfStudy: string;
+  grade: string;
+  activities: string;
+  showOnSite: boolean;
+  showOnResume: boolean;
 };
 
 export type StoredSkill = {
@@ -116,7 +126,6 @@ function toProject(row: typeof projects.$inferSelect): StoredProject {
     repo: row.repo,
     position: row.position,
     image: row.image,
-    mark: row.mark,
     showOnSite: row.showOnSite !== 0,
     showOnResume: row.showOnResume !== 0,
   };
@@ -126,7 +135,7 @@ function isTimelineKind(value: string): value is TimelineKind {
   return value === "work" || value === "education" || value === "certificate";
 }
 
-function toTimeline(row: typeof timelineEntries.$inferSelect): TimelineEntry {
+function toTimeline(row: typeof resumeEntries.$inferSelect): TimelineEntry {
   return {
     id: row.id,
     kind: isTimelineKind(row.kind) ? row.kind : "work",
@@ -136,6 +145,43 @@ function toTimeline(row: typeof timelineEntries.$inferSelect): TimelineEntry {
     detail: row.detail,
     href: row.href,
     position: row.position,
+    location: row.location ?? "",
+    locationType: row.locationType ?? "",
+    employmentType: row.employmentType ?? "",
+    isCurrent: (row.isCurrent ?? 0) !== 0,
+    startMonth: row.startMonth ?? "",
+    startYear: row.startYear ?? "",
+    endMonth: row.endMonth ?? "",
+    endYear: row.endYear ?? "",
+    fieldOfStudy: row.fieldOfStudy ?? "",
+    grade: row.grade ?? "",
+    activities: row.activities ?? "",
+    showOnSite: (row.showOnSite ?? 1) !== 0,
+    showOnResume: (row.showOnResume ?? 1) !== 0,
+  };
+}
+
+function timelineValues(input: Omit<TimelineEntry, "id" | "position">) {
+  return {
+    kind: input.kind,
+    title: input.title,
+    place: input.place,
+    period: input.period,
+    detail: input.detail,
+    href: input.href,
+    location: input.location,
+    locationType: input.locationType,
+    employmentType: input.employmentType,
+    isCurrent: input.isCurrent ? 1 : 0,
+    startMonth: input.startMonth,
+    startYear: input.startYear,
+    endMonth: input.endMonth,
+    endYear: input.endYear,
+    fieldOfStudy: input.fieldOfStudy,
+    grade: input.grade,
+    activities: input.activities,
+    showOnSite: input.showOnSite ? 1 : 0,
+    showOnResume: input.showOnResume ? 1 : 0,
   };
 }
 
@@ -160,16 +206,16 @@ export async function updateUserPassword(userId: number, passwordHash: string) {
 
 export async function createPasswordResetToken(userId: number, tokenHash: string, expiresAt: string) {
   const db = await getDb();
-  await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
-  await db.insert(passwordResetTokens).values({ userId, tokenHash, expiresAt });
+  await db.delete(passwordResets).where(eq(passwordResets.userId, userId));
+  await db.insert(passwordResets).values({ userId, tokenHash, expiresAt });
 }
 
 export async function findValidPasswordResetToken(tokenHash: string) {
   const db = await getDb();
   const [row] = await db
     .select()
-    .from(passwordResetTokens)
-    .where(and(eq(passwordResetTokens.tokenHash, tokenHash), isNull(passwordResetTokens.usedAt)))
+    .from(passwordResets)
+    .where(and(eq(passwordResets.tokenHash, tokenHash), isNull(passwordResets.usedAt)))
     .limit(1);
 
   if (!row) return undefined;
@@ -180,16 +226,16 @@ export async function findValidPasswordResetToken(tokenHash: string) {
 export async function markPasswordResetTokenUsed(id: number) {
   const db = await getDb();
   await db
-    .update(passwordResetTokens)
+    .update(passwordResets)
     .set({ usedAt: new Date().toISOString() })
-    .where(eq(passwordResetTokens.id, id));
+    .where(eq(passwordResets.id, id));
 }
 
 export async function getSiteProfile(): Promise<SiteProfile> {
   const db = await getDb();
-  const [row] = await db.select().from(siteProfile).where(eq(siteProfile.id, 1)).limit(1);
+  const [row] = await db.select().from(profiles).where(eq(profiles.id, 1)).limit(1);
   if (!row) {
-    throw new Error("Site profile is missing. Apply D1 migrations.");
+    throw new Error("Profile is missing. Apply D1 migrations.");
   }
   const shape = row.photoShape;
   return {
@@ -200,8 +246,6 @@ export async function getSiteProfile(): Promise<SiteProfile> {
     email: row.email,
     github: row.github,
     linkedin: row.linkedin,
-    resume: row.resume,
-    githubUsername: row.githubUsername,
     photo: row.photo ?? "",
     photoShape: shape === "rounded" || shape === "square" ? shape : "circle",
     resumePublished: row.resumePublished !== 0,
@@ -211,7 +255,7 @@ export async function getSiteProfile(): Promise<SiteProfile> {
 export async function updateSiteProfile(input: SiteProfile) {
   const db = await getDb();
   await db
-    .update(siteProfile)
+    .update(profiles)
     .set({
       name: input.name,
       role: input.role,
@@ -220,21 +264,19 @@ export async function updateSiteProfile(input: SiteProfile) {
       email: input.email,
       github: input.github,
       linkedin: input.linkedin,
-      resume: input.resume,
-      githubUsername: input.githubUsername,
       photo: input.photo,
       photoShape: input.photoShape,
       resumePublished: input.resumePublished ? 1 : 0,
     })
-    .where(eq(siteProfile.id, 1));
+    .where(eq(profiles.id, 1));
 }
 
 export async function setResumePublished(published: boolean) {
   const db = await getDb();
   await db
-    .update(siteProfile)
+    .update(profiles)
     .set({ resumePublished: published ? 1 : 0 })
-    .where(eq(siteProfile.id, 1));
+    .where(eq(profiles.id, 1));
 }
 
 export async function listAboutParagraphs(): Promise<AboutParagraph[]> {
@@ -266,67 +308,101 @@ export async function deleteAboutParagraph(id: number) {
 
 export async function listAboutFacts(): Promise<AboutFact[]> {
   const db = await getDb();
-  return db.select().from(aboutFacts).orderBy(asc(aboutFacts.position), asc(aboutFacts.id));
+  return db.select().from(aboutHighlights).orderBy(asc(aboutHighlights.position), asc(aboutHighlights.id));
 }
 
 export async function getAboutFact(id: number) {
   const db = await getDb();
-  const [row] = await db.select().from(aboutFacts).where(eq(aboutFacts.id, id)).limit(1);
+  const [row] = await db.select().from(aboutHighlights).where(eq(aboutHighlights.id, id)).limit(1);
   return row;
 }
 
 export async function insertAboutFact(input: { title: string; text: string }) {
   const db = await getDb();
-  const [current] = await db.select({ value: max(aboutFacts.position) }).from(aboutFacts);
-  await db.insert(aboutFacts).values({ ...input, position: (current?.value ?? -1) + 1 });
+  const [current] = await db.select({ value: max(aboutHighlights.position) }).from(aboutHighlights);
+  await db.insert(aboutHighlights).values({ ...input, position: (current?.value ?? -1) + 1 });
 }
 
 export async function updateAboutFact(id: number, input: { title: string; text: string }) {
   const db = await getDb();
-  await db.update(aboutFacts).set(input).where(eq(aboutFacts.id, id));
+  await db.update(aboutHighlights).set(input).where(eq(aboutHighlights.id, id));
 }
 
 export async function deleteAboutFact(id: number) {
   const db = await getDb();
-  await db.delete(aboutFacts).where(eq(aboutFacts.id, id));
+  await db.delete(aboutHighlights).where(eq(aboutHighlights.id, id));
 }
 
-export async function listTimelineEntries(kind?: TimelineKind): Promise<TimelineEntry[]> {
+export async function listTimelineEntries(
+  kind?: TimelineKind,
+  filter?: { showOnSite?: boolean; showOnResume?: boolean },
+): Promise<TimelineEntry[]> {
   const db = await getDb();
   const rows = kind
     ? await db
         .select()
-        .from(timelineEntries)
-        .where(eq(timelineEntries.kind, kind))
-        .orderBy(asc(timelineEntries.position), asc(timelineEntries.id))
-    : await db.select().from(timelineEntries).orderBy(asc(timelineEntries.position), asc(timelineEntries.id));
-  return rows.map(toTimeline);
+        .from(resumeEntries)
+        .where(eq(resumeEntries.kind, kind))
+        .orderBy(asc(resumeEntries.position), asc(resumeEntries.id))
+    : await db.select().from(resumeEntries).orderBy(asc(resumeEntries.position), asc(resumeEntries.id));
+  return rows.map(toTimeline).filter((entry) => {
+    if (filter?.showOnSite !== undefined && entry.showOnSite !== filter.showOnSite) return false;
+    if (filter?.showOnResume !== undefined && entry.showOnResume !== filter.showOnResume) return false;
+    return true;
+  });
 }
 
 export async function getTimelineEntry(id: number): Promise<TimelineEntry | undefined> {
   const db = await getDb();
-  const [row] = await db.select().from(timelineEntries).where(eq(timelineEntries.id, id)).limit(1);
+  const [row] = await db.select().from(resumeEntries).where(eq(resumeEntries.id, id)).limit(1);
   return row ? toTimeline(row) : undefined;
 }
 
 export async function insertTimelineEntry(input: Omit<TimelineEntry, "id" | "position">) {
   const db = await getDb();
-  const [current] = await db.select({ value: max(timelineEntries.position) }).from(timelineEntries);
+  const [current] = await db.select({ value: max(resumeEntries.position) }).from(resumeEntries);
   const [row] = await db
-    .insert(timelineEntries)
-    .values({ ...input, position: (current?.value ?? -1) + 1 })
-    .returning({ id: timelineEntries.id });
+    .insert(resumeEntries)
+    .values({ ...timelineValues(input), position: (current?.value ?? -1) + 1 })
+    .returning({ id: resumeEntries.id });
   return row.id;
 }
 
 export async function updateTimelineEntry(id: number, input: Omit<TimelineEntry, "id" | "position">) {
   const db = await getDb();
-  await db.update(timelineEntries).set(input).where(eq(timelineEntries.id, id));
+  await db.update(resumeEntries).set(timelineValues(input)).where(eq(resumeEntries.id, id));
 }
 
 export async function deleteTimelineEntry(id: number) {
   const db = await getDb();
-  await db.delete(timelineEntries).where(eq(timelineEntries.id, id));
+  await db.delete(resumeEntries).where(eq(resumeEntries.id, id));
+}
+
+export async function setTimelineEntryPositions(orderedIds: number[]) {
+  const db = await getDb();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      db.update(resumeEntries).set({ position: index }).where(eq(resumeEntries.id, id)),
+    ),
+  );
+}
+
+export async function setProjectPositions(orderedIds: number[]) {
+  const db = await getDb();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      db.update(projects).set({ position: index }).where(eq(projects.id, id)),
+    ),
+  );
+}
+
+export async function setSkillPositions(orderedIds: number[]) {
+  const db = await getDb();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      db.update(skills).set({ position: index }).where(eq(skills.id, id)),
+    ),
+  );
 }
 
 export async function listSkills(): Promise<StoredSkill[]> {
@@ -418,7 +494,6 @@ export async function insertProject(input: Omit<StoredProject, "id" | "position"
       href: input.href,
       repo: input.repo,
       image: input.image,
-      mark: input.mark,
       showOnSite: input.showOnSite ? 1 : 0,
       showOnResume: input.showOnResume ? 1 : 0,
       position,
@@ -442,7 +517,6 @@ export async function updateProject(id: number, input: Omit<StoredProject, "id" 
       href: input.href,
       repo: input.repo,
       image: input.image,
-      mark: input.mark,
       showOnSite: input.showOnSite ? 1 : 0,
       showOnResume: input.showOnResume ? 1 : 0,
     })

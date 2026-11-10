@@ -1,10 +1,13 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
+import { CheckCircle2Icon, CircleAlertIcon } from "lucide-react";
 import {
   deleteStudioProject,
   deleteStudioSkill,
   deleteStudioTimelineEntry,
+  reorderStudioProjects,
+  reorderStudioTimelineEntries,
   saveStudioProfile,
   saveStudioProject,
   saveStudioSkill,
@@ -12,8 +15,14 @@ import {
   type StudioState,
 } from "@/app/admin/resume/actions";
 import { ResumePreview } from "@/components/admin/resume/ResumePreview";
-import { nextTempId, type ResumeDraft, type ResumeTab } from "@/components/admin/resume/types";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  nextTempId,
+  resumePreviewSectionByTab,
+  type ResumeDraft,
+  type ResumeTab,
+} from "@/components/admin/resume/types";
+import { moveItem, moveVisibleItem } from "@/lib/reorder";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -30,11 +39,31 @@ import { Textarea } from "@/components/ui/textarea";
 import type { StoredProject, StoredSkill, TimelineEntry } from "@/db";
 import type { TimelineKind } from "@/db/schema";
 import { ProfilePhotoField } from "@/components/admin/ProfilePhotoField";
+import { ProjectImageField } from "@/components/admin/ProjectImageField";
+import { ProjectStackField } from "@/components/admin/ProjectStackField";
 import { parseProfilePhotoShape } from "@/lib/profile-photo";
 import { skillIconOptions } from "@/lib/skill-icons";
+import {
+  employmentTypes,
+  formatTimelinePeriod,
+  locationTypes,
+  timelineMonths,
+  timelineYearOptions,
+} from "@/lib/timeline-period";
 import { cn } from "@/lib/utils";
 
 const initialStudio: StudioState = { error: "", message: "" };
+
+function MonthSelectValue() {
+  return (
+    <SelectValue placeholder="Month">
+      {(value: string | null) => {
+        if (!value || value === "__none__") return "Month";
+        return timelineMonths.find((month) => month.value === value)?.label ?? value;
+      }}
+    </SelectValue>
+  );
+}
 
 const tabs: { value: ResumeTab; label: string }[] = [
   { value: "profile", label: "Profile" },
@@ -53,6 +82,7 @@ export function ResumeStudio({
   initialTab?: ResumeTab;
 }) {
   const [draft, setDraft] = useState(initial);
+  const [activeTab, setActiveTab] = useState<ResumeTab>(initialTab);
   const [selected, setSelected] = useState<Record<TimelineKind | "skill" | "project", number | null>>({
     work: initial.experience[0]?.id ?? null,
     education: initial.education[0]?.id ?? null,
@@ -61,10 +91,61 @@ export function ResumeStudio({
     project: initial.projects[0]?.id ?? null,
   });
 
+  function persistTimelineOrder(kind: TimelineKind, items: { id: number }[]) {
+    const ids = items.map((item) => item.id).filter((id) => id > 0);
+    if (!ids.length) return;
+    const formData = new FormData();
+    formData.set("kind", kind);
+    formData.set("ids", ids.join(","));
+    void reorderStudioTimelineEntries(formData);
+  }
+
+  function persistProjectOrder(items: { id: number }[]) {
+    const ids = items.map((item) => item.id).filter((id) => id > 0);
+    if (!ids.length) return;
+    const formData = new FormData();
+    formData.set("ids", ids.join(","));
+    void reorderStudioProjects(formData);
+  }
+
+  function reorderExperience(fromIndex: number, toIndex: number) {
+    const visible = draft.experience.filter((item) => item.showOnResume);
+    const next = moveVisibleItem(draft.experience, visible, fromIndex, toIndex);
+    setDraft((prev) => ({ ...prev, experience: next }));
+    persistTimelineOrder("work", next);
+  }
+
+  function reorderEducation(fromIndex: number, toIndex: number) {
+    const visible = draft.education.filter((item) => item.showOnResume);
+    const next = moveVisibleItem(draft.education, visible, fromIndex, toIndex);
+    setDraft((prev) => ({ ...prev, education: next }));
+    persistTimelineOrder("education", next);
+  }
+
+  function reorderCertificates(fromIndex: number, toIndex: number) {
+    const next = moveItem(draft.certificates, fromIndex, toIndex);
+    setDraft((prev) => ({ ...prev, certificates: next }));
+    persistTimelineOrder("certificate", next);
+  }
+
+  function reorderProjects(fromIndex: number, toIndex: number) {
+    const visible = draft.projects.filter((item) => item.showOnResume);
+    const next = moveVisibleItem(draft.projects, visible, fromIndex, toIndex);
+    setDraft((prev) => ({ ...prev, projects: next }));
+    persistProjectOrder(next);
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
       <div className="min-w-0">
-        <Tabs defaultValue={initialTab}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            if (typeof value === "string" && value in resumePreviewSectionByTab) {
+              setActiveTab(value as ResumeTab);
+            }
+          }}
+        >
           <TabsList variant="line" className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1">
             {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className="flex-none px-2.5">
@@ -128,6 +209,7 @@ export function ResumeStudio({
           <TabsContent value="projects" className="outline-none">
             <ProjectsEditor
               items={draft.projects}
+              skills={draft.skills}
               selectedId={selected.project}
               onSelect={(id) => setSelected((prev) => ({ ...prev, project: id }))}
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, projects: items }))}
@@ -138,8 +220,17 @@ export function ResumeStudio({
 
       <div className="flex min-w-0 max-h-[min(85vh,calc(100dvh-8rem))] flex-col lg:sticky lg:top-20 lg:h-[calc(100dvh-5.5rem)] lg:max-h-[calc(100dvh-5.5rem)]">
         <p className="mb-3 shrink-0 text-sm text-muted-foreground">Live preview</p>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-          <ResumePreview draft={draft} />
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pr-1">
+          <ResumePreview
+            draft={draft}
+            focusSection={resumePreviewSectionByTab[activeTab]}
+            reorder={{
+              experience: reorderExperience,
+              education: reorderEducation,
+              certificates: reorderCertificates,
+              projects: reorderProjects,
+            }}
+          />
         </div>
       </div>
     </div>
@@ -193,8 +284,6 @@ function ProfileEditor({
           ["email", "Email", "email"],
           ["github", "GitHub URL", "url"],
           ["linkedin", "LinkedIn URL", "url"],
-          ["resume", "Resume path", "text"],
-          ["githubUsername", "GitHub username", "text"],
         ] as const
       ).map(([key, label, type]) => (
         <div key={key} className="grid gap-2">
@@ -203,7 +292,6 @@ function ProfileEditor({
             id={`resume-${key}`}
             name={key}
             type={type}
-            required={key !== "github" && key !== "linkedin"}
             className="h-10"
             value={profile[key]}
             onChange={(event) => patch(key, event.target.value)}
@@ -278,10 +366,47 @@ function TimelineEditor({
       detail: "",
       href: "",
       position: items.length,
+      location: "",
+      locationType: kind === "work" ? "On-site" : "",
+      employmentType: kind === "work" ? "Full-time" : "",
+      isCurrent: false,
+      startMonth: "",
+      startYear: "",
+      endMonth: "",
+      endYear: "",
+      fieldOfStudy: "",
+      grade: "",
+      activities: "",
+      showOnSite: true,
+      showOnResume: true,
     };
     onChangeItems([...items, entry]);
     onSelect(id);
   }
+
+  function patchStructuredDates(
+    patch: Partial<Pick<TimelineEntry, "startMonth" | "startYear" | "endMonth" | "endYear" | "isCurrent">>,
+  ) {
+    if (!selected) return;
+    const next = { ...selected, ...patch };
+    if (kind === "work" && next.isCurrent) {
+      next.endMonth = "";
+      next.endYear = "";
+    }
+    next.period = formatTimelinePeriod({
+      startMonth: next.startMonth,
+      startYear: next.startYear,
+      endMonth: next.endMonth,
+      endYear: next.endYear,
+      isCurrent: kind === "work" ? next.isCurrent : false,
+      fallback: next.period,
+    });
+    patchSelected(next);
+  }
+
+  const yearOptions = timelineYearOptions();
+  const isWork = kind === "work";
+  const isEducation = kind === "education";
 
   function removeSelected() {
     if (!selected) return;
@@ -340,7 +465,9 @@ function TimelineEditor({
               className={cn("max-w-full truncate")}
               onClick={() => onSelect(item.id)}
             >
-              {item.title || "Untitled"}
+              {kind === "education"
+                ? item.place || item.title || item.fieldOfStudy || "Untitled"
+                : item.title || "Untitled"}
             </Button>
           ))}
         </div>
@@ -350,65 +477,515 @@ function TimelineEditor({
         <form action={action} className="grid gap-4">
           <input type="hidden" name="id" value={selected.id} />
           <input type="hidden" name="kind" value={kind} />
-          <div className="grid gap-2">
-            <Label htmlFor={`${kind}-title`}>Title</Label>
-            <Input
-              id={`${kind}-title`}
-              name="title"
-              required
-              className="h-10"
-              value={selected.title}
-              onChange={(event) => patchSelected({ title: event.target.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor={`${kind}-place`}>{placeLabel}</Label>
-            <Input
-              id={`${kind}-place`}
-              name="place"
-              required
-              className="h-10"
-              value={selected.place}
-              onChange={(event) => patchSelected({ place: event.target.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor={`${kind}-period`}>Period</Label>
-            <Input
-              id={`${kind}-period`}
-              name="period"
-              required
-              className="h-10"
-              value={selected.period}
-              onChange={(event) => patchSelected({ period: event.target.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor={`${kind}-detail`}>Detail</Label>
-            <Textarea
-              id={`${kind}-detail`}
-              name="detail"
-              required
-              rows={4}
-              value={selected.detail}
-              onChange={(event) => patchSelected({ detail: event.target.value })}
-            />
-          </div>
-          {showHref ? (
-            <div className="grid gap-2">
-              <Label htmlFor={`${kind}-href`}>Credential URL</Label>
-              <Input
-                id={`${kind}-href`}
-                name="href"
-                type="url"
-                className="h-10"
-                value={selected.href}
-                onChange={(event) => patchSelected({ href: event.target.value })}
-              />
-            </div>
+          <input type="hidden" name="period" value={selected.period} />
+          <input type="hidden" name="location" value={selected.location} />
+          <input type="hidden" name="locationType" value={selected.locationType} />
+          <input type="hidden" name="employmentType" value={selected.employmentType} />
+          <input type="hidden" name="fieldOfStudy" value={selected.fieldOfStudy} />
+          <input type="hidden" name="grade" value={selected.grade} />
+          <input type="hidden" name="activities" value={selected.activities} />
+          <input type="hidden" name="startMonth" value={selected.startMonth} />
+          <input type="hidden" name="startYear" value={selected.startYear} />
+          <input type="hidden" name="endMonth" value={selected.endMonth} />
+          <input type="hidden" name="endYear" value={selected.endYear} />
+          {selected.isCurrent ? <input type="hidden" name="isCurrent" value="on" /> : null}
+          {selected.showOnSite ? <input type="hidden" name="showOnSite" value="on" /> : null}
+          {selected.showOnResume ? <input type="hidden" name="showOnResume" value="on" /> : null}
+
+          {isWork ? (
+            <>
+              <p className="text-sm font-medium">Role details</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label htmlFor={`${kind}-title`}>Job title</Label>
+                  <Input
+                    id={`${kind}-title`}
+                    name="title"
+                    required
+                    className="h-10"
+                    value={selected.title}
+                    onChange={(event) => patchSelected({ title: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label htmlFor={`${kind}-place`}>Organization</Label>
+                  <Input
+                    id={`${kind}-place`}
+                    name="place"
+                    required
+                    className="h-10"
+                    value={selected.place}
+                    onChange={(event) => patchSelected({ place: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-location`}>Location</Label>
+                  <Input
+                    id={`${kind}-location`}
+                    className="h-10"
+                    placeholder="Kuala Lumpur, Malaysia"
+                    value={selected.location}
+                    onChange={(event) => patchSelected({ location: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-locationType`}>Location type</Label>
+                  <Select
+                    value={selected.locationType || "__none__"}
+                    onValueChange={(value) =>
+                      patchSelected({
+                        locationType: !value || value === "__none__" ? "" : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-locationType`} className="h-10 w-full">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Select type</SelectItem>
+                      {locationTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label htmlFor={`${kind}-employmentType`}>Employment type</Label>
+                  <Select
+                    value={selected.employmentType || "__none__"}
+                    onValueChange={(value) =>
+                      patchSelected({
+                        employmentType: !value || value === "__none__" ? "" : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-employmentType`} className="h-10 w-full">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Select type</SelectItem>
+                      {employmentTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Label className="font-normal">
+                <Checkbox
+                  checked={selected.isCurrent}
+                  onCheckedChange={(checked) =>
+                    patchStructuredDates({ isCurrent: checked === true })
+                  }
+                />
+                I am currently working in this role
+              </Label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-startMonth`}>Start month</Label>
+                  <Select
+                    value={selected.startMonth || "__none__"}
+                    onValueChange={(value) =>
+                      patchStructuredDates({
+                        startMonth: !value || value === "__none__" ? "" : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-startMonth`} className="h-10 w-full">
+                      <MonthSelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Month</SelectItem>
+                      {timelineMonths.map((month) => (
+                        <SelectItem key={month.value} value={month.value}>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-startYear`}>Start year</Label>
+                  <Select
+                    value={selected.startYear || "__none__"}
+                    onValueChange={(value) =>
+                      patchStructuredDates({
+                        startYear: !value || value === "__none__" ? "" : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-startYear`} className="h-10 w-full">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Year</SelectItem>
+                      {yearOptions.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {!selected.isCurrent ? (
+                  <>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${kind}-endMonth`}>End month</Label>
+                      <Select
+                        value={selected.endMonth || "__none__"}
+                        onValueChange={(value) =>
+                          patchStructuredDates({
+                            endMonth: !value || value === "__none__" ? "" : value,
+                          })
+                        }
+                      >
+                        <SelectTrigger id={`${kind}-endMonth`} className="h-10 w-full">
+                          <MonthSelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Month</SelectItem>
+                          {timelineMonths.map((month) => (
+                            <SelectItem key={month.value} value={month.value}>
+                              {month.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${kind}-endYear`}>End year</Label>
+                      <Select
+                        value={selected.endYear || "__none__"}
+                        onValueChange={(value) =>
+                          patchStructuredDates({
+                            endYear: !value || value === "__none__" ? "" : value,
+                          })
+                        }
+                      >
+                        <SelectTrigger id={`${kind}-endYear`} className="h-10 w-full">
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Year</SelectItem>
+                          {yearOptions.map((year) => (
+                            <SelectItem key={year} value={year}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+
+              {selected.period ? (
+                <p className="text-xs text-muted-foreground">Shows as: {selected.period}</p>
+              ) : null}
+
+              <div className="grid gap-2">
+                <Label htmlFor={`${kind}-detail`}>Description</Label>
+                <Textarea
+                  id={`${kind}-detail`}
+                  name="detail"
+                  rows={5}
+                  placeholder="List responsibilities, impact, and highlights…"
+                  value={selected.detail}
+                  onChange={(event) => patchSelected({ detail: event.target.value })}
+                />
+              </div>
+              <input type="hidden" name="href" value="" />
+              <div className="grid gap-2">
+                <Label className="font-normal">
+                  <Checkbox
+                    checked={selected.showOnSite}
+                    onCheckedChange={(checked) =>
+                      patchSelected({ showOnSite: checked === true })
+                    }
+                  />
+                  Show on homepage
+                </Label>
+                <Label className="font-normal">
+                  <Checkbox
+                    checked={selected.showOnResume}
+                    onCheckedChange={(checked) =>
+                      patchSelected({ showOnResume: checked === true })
+                    }
+                  />
+                  Show on resume
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Uncheck homepage to hide from the public site. Check resume to include it in the
+                  live preview.
+                </p>
+              </div>
+            </>
+          ) : isEducation ? (
+            <>
+              <p className="text-sm font-medium">Education details</p>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-place`}>School</Label>
+                  <Input
+                    id={`${kind}-place`}
+                    name="place"
+                    required
+                    className="h-10"
+                    placeholder="Ex: Universiti Kuala Lumpur"
+                    value={selected.place}
+                    onChange={(event) => patchSelected({ place: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-title`}>Degree</Label>
+                  <Input
+                    id={`${kind}-title`}
+                    name="title"
+                    className="h-10"
+                    placeholder="Ex: Bachelor of Science"
+                    value={selected.title}
+                    onChange={(event) => patchSelected({ title: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-fieldOfStudy`}>Field of study</Label>
+                  <Input
+                    id={`${kind}-fieldOfStudy`}
+                    className="h-10"
+                    placeholder="Ex: Business"
+                    value={selected.fieldOfStudy}
+                    onChange={(event) => patchSelected({ fieldOfStudy: event.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-startMonth`}>Start month</Label>
+                  <Select
+                    value={selected.startMonth || "__none__"}
+                    onValueChange={(value) =>
+                      patchStructuredDates({
+                        startMonth: !value || value === "__none__" ? "" : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-startMonth`} className="h-10 w-full">
+                      <MonthSelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Month</SelectItem>
+                      {timelineMonths.map((month) => (
+                        <SelectItem key={month.value} value={month.value}>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-startYear`}>Start year</Label>
+                  <Select
+                    value={selected.startYear || "__none__"}
+                    onValueChange={(value) =>
+                      patchStructuredDates({
+                        startYear: !value || value === "__none__" ? "" : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-startYear`} className="h-10 w-full">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Year</SelectItem>
+                      {yearOptions.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-endMonth`}>End month (or expected)</Label>
+                  <Select
+                    value={selected.endMonth || "__none__"}
+                    onValueChange={(value) =>
+                      patchStructuredDates({
+                        endMonth: !value || value === "__none__" ? "" : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-endMonth`} className="h-10 w-full">
+                      <MonthSelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Month</SelectItem>
+                      {timelineMonths.map((month) => (
+                        <SelectItem key={month.value} value={month.value}>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-endYear`}>End year (or expected)</Label>
+                  <Select
+                    value={selected.endYear || "__none__"}
+                    onValueChange={(value) =>
+                      patchStructuredDates({
+                        endYear: !value || value === "__none__" ? "" : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-endYear`} className="h-10 w-full">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Year</SelectItem>
+                      {yearOptions.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {selected.period ? (
+                <p className="text-xs text-muted-foreground">Shows as: {selected.period}</p>
+              ) : null}
+
+              <div className="grid gap-2">
+                <Label htmlFor={`${kind}-grade`}>Grade</Label>
+                <Input
+                  id={`${kind}-grade`}
+                  className="h-10"
+                  maxLength={80}
+                  placeholder="Ex: 3.53"
+                  value={selected.grade}
+                  onChange={(event) => patchSelected({ grade: event.target.value.slice(0, 80) })}
+                />
+                <p className="text-xs text-muted-foreground">{selected.grade.length}/80</p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${kind}-activities`}>Activities and societies</Label>
+                <Textarea
+                  id={`${kind}-activities`}
+                  rows={3}
+                  placeholder="Ex: Coding club, debate team"
+                  value={selected.activities}
+                  onChange={(event) => patchSelected({ activities: event.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${kind}-detail`}>Description</Label>
+                <Textarea
+                  id={`${kind}-detail`}
+                  name="detail"
+                  rows={4}
+                  placeholder="Describe coursework, projects, or achievements…"
+                  value={selected.detail}
+                  onChange={(event) => patchSelected({ detail: event.target.value })}
+                />
+              </div>
+              <input type="hidden" name="href" value="" />
+              <div className="grid gap-2">
+                <Label className="font-normal">
+                  <Checkbox
+                    checked={selected.showOnSite}
+                    onCheckedChange={(checked) =>
+                      patchSelected({ showOnSite: checked === true })
+                    }
+                  />
+                  Show on homepage
+                </Label>
+                <Label className="font-normal">
+                  <Checkbox
+                    checked={selected.showOnResume}
+                    onCheckedChange={(checked) =>
+                      patchSelected({ showOnResume: checked === true })
+                    }
+                  />
+                  Show on resume
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Uncheck homepage to hide from the public site. Check resume to include it in the
+                  live preview.
+                </p>
+              </div>
+            </>
           ) : (
-            <input type="hidden" name="href" value="" />
+            <>
+              <div className="grid gap-2">
+                <Label htmlFor={`${kind}-title`}>Title</Label>
+                <Input
+                  id={`${kind}-title`}
+                  name="title"
+                  required
+                  className="h-10"
+                  value={selected.title}
+                  onChange={(event) => patchSelected({ title: event.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${kind}-place`}>{placeLabel}</Label>
+                <Input
+                  id={`${kind}-place`}
+                  name="place"
+                  required
+                  className="h-10"
+                  value={selected.place}
+                  onChange={(event) => patchSelected({ place: event.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${kind}-period`}>Period</Label>
+                <Input
+                  id={`${kind}-period`}
+                  className="h-10"
+                  required
+                  value={selected.period}
+                  onChange={(event) => patchSelected({ period: event.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${kind}-detail`}>Detail</Label>
+                <Textarea
+                  id={`${kind}-detail`}
+                  name="detail"
+                  required
+                  rows={4}
+                  value={selected.detail}
+                  onChange={(event) => patchSelected({ detail: event.target.value })}
+                />
+              </div>
+              {showHref ? (
+                <div className="grid gap-2">
+                  <Label htmlFor={`${kind}-href`}>Credential URL</Label>
+                  <Input
+                    id={`${kind}-href`}
+                    name="href"
+                    type="url"
+                    className="h-10"
+                    value={selected.href}
+                    onChange={(event) => patchSelected({ href: event.target.value })}
+                  />
+                </div>
+              ) : (
+                <input type="hidden" name="href" value="" />
+              )}
+            </>
           )}
+
           <Status state={state} />
           {deleteError ? (
             <Alert variant="destructive">
@@ -585,11 +1162,13 @@ function SkillsEditor({
 
 function ProjectsEditor({
   items,
+  skills,
   selectedId,
   onSelect,
   onChangeItems,
 }: {
   items: StoredProject[];
+  skills: StoredSkill[];
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   onChangeItems: (items: StoredProject[]) => void;
@@ -597,6 +1176,8 @@ function ProjectsEditor({
   const [state, action, pending] = useActionState(saveStudioProject, initialStudio);
   const [pendingDelete, startDelete] = useTransition();
   const [deleteError, setDeleteError] = useState("");
+  const [imageError, setImageError] = useState("");
+  const [imageBusy, setImageBusy] = useState(false);
   const selected = items.find((item) => item.id === selectedId) ?? null;
 
   useEffect(() => {
@@ -606,6 +1187,11 @@ function ProjectsEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.id]);
+
+  useEffect(() => {
+    setImageError("");
+    setImageBusy(false);
+  }, [selectedId]);
 
   function patchSelected(patch: Partial<StoredProject>) {
     if (!selected) return;
@@ -622,7 +1208,6 @@ function ProjectsEditor({
       href: "",
       repo: "",
       image: "",
-      mark: "",
       position: items.length,
       showOnSite: true,
       showOnResume: true,
@@ -701,7 +1286,6 @@ function ProjectsEditor({
             formData.set("description", selected.description);
             formData.set("stack", selected.stack.join(", "));
             formData.set("image", selected.image);
-            formData.set("mark", selected.mark);
             formData.set("href", selected.href);
             formData.set("repo", selected.repo);
             formData.set("showOnSite", selected.showOnSite ? "on" : "");
@@ -710,6 +1294,24 @@ function ProjectsEditor({
           }}
           className="grid gap-4"
         >
+          <div className="grid gap-2">
+            <ProjectImageField
+              image={selected.image}
+              disabled={imageBusy || pending}
+              onImageChange={(image) => patchSelected({ image })}
+              onImageClear={() => patchSelected({ image: "" })}
+              onError={setImageError}
+              onBusyChange={setImageBusy}
+            />
+            {imageBusy ? (
+              <p className="text-sm text-muted-foreground">Compressing image…</p>
+            ) : null}
+            {imageError ? (
+              <Alert variant="destructive">
+                <AlertDescription>{imageError}</AlertDescription>
+              </Alert>
+            ) : null}
+          </div>
           <div className="grid gap-2">
             <Label htmlFor="project-title">Title</Label>
             <Input
@@ -730,43 +1332,11 @@ function ProjectsEditor({
               onChange={(event) => patchSelected({ description: event.target.value })}
             />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="project-stack">Stack</Label>
-            <Input
-              id="project-stack"
-              className="h-10"
-              placeholder="Laravel, MySQL"
-              value={selected.stack.join(", ")}
-              onChange={(event) =>
-                patchSelected({
-                  stack: event.target.value
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter(Boolean),
-                })
-              }
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="project-image">Image path</Label>
-            <Input
-              id="project-image"
-              className="h-10"
-              placeholder="/projects/example.png"
-              value={selected.image}
-              onChange={(event) => patchSelected({ image: event.target.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="project-mark">Mark</Label>
-            <Input
-              id="project-mark"
-              className="h-10"
-              placeholder="ILMS"
-              value={selected.mark}
-              onChange={(event) => patchSelected({ mark: event.target.value })}
-            />
-          </div>
+          <ProjectStackField
+            skills={skills}
+            value={selected.stack}
+            onChange={(stack) => patchSelected({ stack })}
+          />
           <div className="grid gap-2">
             <Label htmlFor="project-href">Live URL</Label>
             <Input
@@ -813,7 +1383,7 @@ function ProjectsEditor({
               <AlertDescription>{deleteError}</AlertDescription>
             </Alert>
           ) : null}
-          <Button type="submit" disabled={pending} className="h-10 w-fit">
+          <Button type="submit" disabled={pending || imageBusy} className="h-10 w-fit">
             {pending ? "Saving…" : selected.id < 1 ? "Add project" : "Save project"}
           </Button>
         </form>
@@ -825,15 +1395,24 @@ function ProjectsEditor({
 function Status({ state }: { state: StudioState | null | undefined }) {
   if (state?.error) {
     return (
-      <Alert variant="destructive">
+      <Alert
+        variant="destructive"
+        className="border-destructive/25 bg-destructive/8 px-3 py-2.5 shadow-sm"
+      >
+        <CircleAlertIcon className="size-4" />
+        <AlertTitle className="text-destructive">Couldn’t save</AlertTitle>
         <AlertDescription>{state.error}</AlertDescription>
       </Alert>
     );
   }
   if (state?.message) {
     return (
-      <Alert>
-        <AlertDescription>{state.message}</AlertDescription>
+      <Alert className="border-emerald-500/25 bg-emerald-500/8 px-3 py-2.5 text-emerald-950 shadow-sm dark:text-emerald-50">
+        <CheckCircle2Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
+        <AlertTitle className="text-emerald-800 dark:text-emerald-200">Saved</AlertTitle>
+        <AlertDescription className="text-emerald-800/80 dark:text-emerald-100/80">
+          {state.message}
+        </AlertDescription>
       </Alert>
     );
   }

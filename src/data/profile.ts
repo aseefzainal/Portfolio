@@ -5,7 +5,6 @@ export type Project = {
   href?: string;
   repo?: string;
   image?: string;
-  mark?: string;
 };
 
 export type SkillGroup = {
@@ -30,7 +29,6 @@ export const profile = {
   email: "aseefzainal65@gmail.com",
   github: "https://github.com/aseefzainal",
   linkedin: "https://www.linkedin.com",
-  resume: "/resume.pdf",
   about: [
     "I ship features end to end: database, API, and the screen people actually use. Most of my work so far is Laravel — routing, Eloquent, and Blade — and this portfolio is where I'm practising React and Next.js.",
     "I care about clear structure, readable code, and pages that stay fast on a phone. Swap this copy in src/data/profile.ts when you're ready to publish.",
@@ -76,7 +74,6 @@ export const profile = {
   projects: [
     {
       title: "ILMS",
-      mark: "ILMS",
       image: "/projects/ilms.svg",
       description:
         "Integrated Land Management System. Staff record premise census and licensing, track billboards, and review coverage on maps and printable reports.",
@@ -84,7 +81,6 @@ export const profile = {
     },
     {
       title: "DAMS",
-      mark: "DAMS",
       image: "/projects/dams.png",
       description:
         "Door Attendance Management System. It registers staff and visitors, issues QR invitations, and shows live access from door devices.",
@@ -92,7 +88,6 @@ export const profile = {
     },
     {
       title: "Capital Park",
-      mark: "CP",
       image: "/projects/capital-park.png",
       description:
         "Parking and patrol operations for lot inventory, patroller activity, incidents, payments, and daily summary reports.",
@@ -100,7 +95,6 @@ export const profile = {
     },
     {
       title: "EPPP",
-      mark: "EPPP",
       image: "/projects/eppp.png",
       description:
         "Online procurement for DBKL. Suppliers register their company and bid for supplies, services, and works, with tenders, claims, and project records in one system.",
