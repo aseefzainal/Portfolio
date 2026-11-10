@@ -88,4 +88,14 @@ export const projects = sqliteTable("projects", {
   showOnResume: integer("show_on_resume").notNull().default(1),
 });
 
+export const showcaseTools = sqliteTable("showcase_tools", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  href: text("href").notNull(),
+  enabled: integer("enabled").notNull().default(1),
+  position: integer("position").notNull(),
+});
+
 export type TimelineKind = "work" | "education" | "certificate";

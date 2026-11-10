@@ -16,6 +16,11 @@ const links = [
     label: "About",
     match: (path: string) => path === "/admin/about" || path.startsWith("/admin/about/"),
   },
+  {
+    href: "/admin/showcase",
+    label: "Showcase",
+    match: (path: string) => path === "/admin/showcase" || path.startsWith("/admin/showcase/"),
+  },
 ];
 
 export function AdminNav({ className }: { className?: string }) {

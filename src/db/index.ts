@@ -8,6 +8,7 @@ import {
   profiles,
   projects,
   resumeEntries,
+  showcaseTools,
   skills,
   users,
   type TimelineKind,
@@ -25,6 +26,7 @@ async function getDb() {
       aboutHighlights,
       resumeEntries,
       skills,
+      showcaseTools,
     },
   });
 }
@@ -103,6 +105,16 @@ export type StoredSkill = {
   name: string;
   iconSlug: string;
   color: string;
+  position: number;
+};
+
+export type ShowcaseTool = {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  href: string;
+  enabled: boolean;
   position: number;
 };
 
@@ -526,4 +538,42 @@ export async function updateProject(id: number, input: Omit<StoredProject, "id" 
 export async function deleteProject(id: number) {
   const db = await getDb();
   await db.delete(projects).where(eq(projects.id, id));
+}
+
+function toShowcaseTool(row: typeof showcaseTools.$inferSelect): ShowcaseTool {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    href: row.href,
+    enabled: row.enabled !== 0,
+    position: row.position,
+  };
+}
+
+export async function listShowcaseTools(filter?: { enabled?: boolean }): Promise<ShowcaseTool[]> {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(showcaseTools)
+    .orderBy(asc(showcaseTools.position), asc(showcaseTools.id));
+  return rows.map(toShowcaseTool).filter((tool) => {
+    if (filter?.enabled !== undefined && tool.enabled !== filter.enabled) return false;
+    return true;
+  });
+}
+
+export async function getShowcaseToolBySlug(slug: string): Promise<ShowcaseTool | undefined> {
+  const db = await getDb();
+  const [row] = await db.select().from(showcaseTools).where(eq(showcaseTools.slug, slug)).limit(1);
+  return row ? toShowcaseTool(row) : undefined;
+}
+
+export async function setShowcaseToolEnabled(slug: string, enabled: boolean) {
+  const db = await getDb();
+  await db
+    .update(showcaseTools)
+    .set({ enabled: enabled ? 1 : 0 })
+    .where(eq(showcaseTools.slug, slug));
 }

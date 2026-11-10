@@ -9,6 +9,7 @@ export async function Hero() {
     { href: profile.github, label: "GitHub", external: true, primary: true },
     { href: profile.linkedin, label: "LinkedIn", external: true, primary: false },
     { href: "/resume", label: "Resume", external: false, primary: false },
+    { href: "/showcase", label: "Showcase", external: false, primary: false },
   ];
 
   return (
