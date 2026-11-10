@@ -1,9 +1,10 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { and, asc, eq, isNull, max } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, max } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import {
   aboutHighlights,
   aboutParagraphs,
+  contactMessages,
   passwordResets,
   profiles,
   projects,
@@ -25,6 +26,7 @@ async function getDb() {
       aboutHighlights,
       resumeEntries,
       skills,
+      contactMessages,
     },
   });
 }
@@ -104,6 +106,15 @@ export type StoredSkill = {
   iconSlug: string;
   color: string;
   position: number;
+};
+
+export type ContactMessage = {
+  id: number;
+  name: string;
+  email: string;
+  message: string;
+  createdAt: string;
+  readAt: string | null;
 };
 
 function parseStack(value: string) {
@@ -526,4 +537,89 @@ export async function updateProject(id: number, input: Omit<StoredProject, "id" 
 export async function deleteProject(id: number) {
   const db = await getDb();
   await db.delete(projects).where(eq(projects.id, id));
+}
+
+function toContactMessage(row: typeof contactMessages.$inferSelect): ContactMessage {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    message: row.message,
+    createdAt: row.createdAt,
+    readAt: row.readAt ?? null,
+  };
+}
+
+export async function createContactMessage(input: {
+  name: string;
+  email: string;
+  message: string;
+}) {
+  const db = await getDb();
+  const [row] = await db
+    .insert(contactMessages)
+    .values({
+      name: input.name,
+      email: input.email,
+      message: input.message,
+      createdAt: new Date().toISOString(),
+    })
+    .returning({ id: contactMessages.id });
+  return row.id;
+}
+
+export async function listContactMessages(): Promise<ContactMessage[]> {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(contactMessages)
+    .orderBy(desc(contactMessages.createdAt), desc(contactMessages.id));
+  return rows.map(toContactMessage);
+}
+
+export async function listUnreadContactMessages(limit = 5): Promise<ContactMessage[]> {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(contactMessages)
+    .where(isNull(contactMessages.readAt))
+    .orderBy(desc(contactMessages.createdAt), desc(contactMessages.id))
+    .limit(limit);
+  return rows.map(toContactMessage);
+}
+
+export async function countUnreadContactMessages() {
+  const db = await getDb();
+  const [row] = await db
+    .select({ value: count() })
+    .from(contactMessages)
+    .where(isNull(contactMessages.readAt));
+  return row?.value ?? 0;
+}
+
+export async function getContactMessage(id: number): Promise<ContactMessage | undefined> {
+  const db = await getDb();
+  const [row] = await db.select().from(contactMessages).where(eq(contactMessages.id, id)).limit(1);
+  return row ? toContactMessage(row) : undefined;
+}
+
+export async function markContactMessageRead(id: number) {
+  const db = await getDb();
+  await db
+    .update(contactMessages)
+    .set({ readAt: new Date().toISOString() })
+    .where(and(eq(contactMessages.id, id), isNull(contactMessages.readAt)));
+}
+
+export async function markAllContactMessagesRead() {
+  const db = await getDb();
+  await db
+    .update(contactMessages)
+    .set({ readAt: new Date().toISOString() })
+    .where(isNull(contactMessages.readAt));
+}
+
+export async function deleteContactMessage(id: number) {
+  const db = await getDb();
+  await db.delete(contactMessages).where(eq(contactMessages.id, id));
 }

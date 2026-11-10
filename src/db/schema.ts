@@ -88,4 +88,13 @@ export const projects = sqliteTable("projects", {
   showOnResume: integer("show_on_resume").notNull().default(1),
 });
 
+export const contactMessages = sqliteTable("contact_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  message: text("message").notNull(),
+  createdAt: text("created_at").notNull(),
+  readAt: text("read_at"),
+});
+
 export type TimelineKind = "work" | "education" | "certificate";
