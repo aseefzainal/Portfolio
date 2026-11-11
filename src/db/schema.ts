@@ -28,6 +28,7 @@ export const profiles = sqliteTable("profiles", {
   photo: text("photo").notNull().default(""),
   photoShape: text("photo_shape").notNull().default("circle"),
   resumePublished: integer("resume_published").notNull().default(0),
+  sectionVisibility: text("section_visibility").notNull().default("{}"),
 });
 
 export const aboutParagraphs = sqliteTable("about_paragraphs", {
@@ -74,6 +75,7 @@ export const skills = sqliteTable("skills", {
   name: text("name").notNull(),
   iconSlug: text("icon_slug").notNull().default(""),
   color: text("color").notNull().default(""),
+  level: text("level").notNull().default("proficient"),
   position: integer("position").notNull(),
 });
 

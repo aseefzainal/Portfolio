@@ -14,6 +14,12 @@ import {
   users,
   type TimelineKind,
 } from "@/db/schema";
+import {
+  parseSectionVisibility,
+  serializeSectionVisibility,
+  type SectionVisibility,
+} from "@/lib/section-visibility";
+import { parseSkillLevel, type SkillLevel } from "@/lib/skill-level";
 
 async function getDb() {
   const { env } = await getCloudflareContext({ async: true });
@@ -63,6 +69,7 @@ export type SiteProfile = {
   photo: string;
   photoShape: "circle" | "rounded" | "square";
   resumePublished: boolean;
+  sections: SectionVisibility;
 };
 
 export type AboutParagraph = {
@@ -109,6 +116,7 @@ export type StoredSkill = {
   name: string;
   iconSlug: string;
   color: string;
+  level: SkillLevel;
   position: number;
 };
 
@@ -278,6 +286,7 @@ export async function getSiteProfile(): Promise<SiteProfile> {
     photo: row.photo ?? "",
     photoShape: shape === "rounded" || shape === "square" ? shape : "circle",
     resumePublished: row.resumePublished !== 0,
+    sections: parseSectionVisibility(row.sectionVisibility),
   };
 }
 
@@ -296,7 +305,16 @@ export async function updateSiteProfile(input: SiteProfile) {
       photo: input.photo,
       photoShape: input.photoShape,
       resumePublished: input.resumePublished ? 1 : 0,
+      sectionVisibility: serializeSectionVisibility(input.sections),
     })
+    .where(eq(profiles.id, 1));
+}
+
+export async function updateSectionVisibility(sections: SectionVisibility) {
+  const db = await getDb();
+  await db
+    .update(profiles)
+    .set({ sectionVisibility: serializeSectionVisibility(sections) })
     .where(eq(profiles.id, 1));
 }
 
@@ -434,29 +452,27 @@ export async function setSkillPositions(orderedIds: number[]) {
   );
 }
 
-export async function listSkills(): Promise<StoredSkill[]> {
-  const db = await getDb();
-  const rows = await db.select().from(skills).orderBy(asc(skills.position), asc(skills.id));
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    iconSlug: row.iconSlug,
-    color: row.color,
-    position: row.position,
-  }));
-}
-
-export async function getSkill(id: number): Promise<StoredSkill | undefined> {
-  const db = await getDb();
-  const [row] = await db.select().from(skills).where(eq(skills.id, id)).limit(1);
-  if (!row) return undefined;
+function toStoredSkill(row: typeof skills.$inferSelect): StoredSkill {
   return {
     id: row.id,
     name: row.name,
     iconSlug: row.iconSlug,
     color: row.color,
+    level: parseSkillLevel(row.level),
     position: row.position,
   };
+}
+
+export async function listSkills(): Promise<StoredSkill[]> {
+  const db = await getDb();
+  const rows = await db.select().from(skills).orderBy(asc(skills.position), asc(skills.id));
+  return rows.map(toStoredSkill);
+}
+
+export async function getSkill(id: number): Promise<StoredSkill | undefined> {
+  const db = await getDb();
+  const [row] = await db.select().from(skills).where(eq(skills.id, id)).limit(1);
+  return row ? toStoredSkill(row) : undefined;
 }
 
 export async function insertSkill(input: Omit<StoredSkill, "id" | "position">) {
@@ -468,6 +484,7 @@ export async function insertSkill(input: Omit<StoredSkill, "id" | "position">) {
       name: input.name,
       iconSlug: input.iconSlug,
       color: input.color,
+      level: input.level,
       position: (current?.value ?? -1) + 1,
     })
     .returning({ id: skills.id });
@@ -478,7 +495,12 @@ export async function updateSkill(id: number, input: Omit<StoredSkill, "id" | "p
   const db = await getDb();
   await db
     .update(skills)
-    .set({ name: input.name, iconSlug: input.iconSlug, color: input.color })
+    .set({
+      name: input.name,
+      iconSlug: input.iconSlug,
+      color: input.color,
+      level: input.level,
+    })
     .where(eq(skills.id, id));
 }
 
@@ -579,6 +601,11 @@ export async function listShowcaseTools(filter?: { enabled?: boolean }): Promise
     if (filter?.enabled !== undefined && tool.enabled !== filter.enabled) return false;
     return true;
   });
+}
+
+export async function hasEnabledShowcaseTools() {
+  const tools = await listShowcaseTools({ enabled: true });
+  return tools.length > 0;
 }
 
 export async function getShowcaseToolBySlug(slug: string): Promise<ShowcaseTool | undefined> {

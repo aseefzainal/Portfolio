@@ -14,4 +14,5 @@ export async function toggleShowcaseToolAction(formData: FormData) {
   revalidatePath("/admin/showcase");
   revalidatePath("/showcase");
   revalidatePath(`/showcase/${slug}`);
+  revalidatePath("/");
 }
