@@ -87,6 +87,8 @@ export type TimelineEntry = {
   position: number;
   location: string;
   locationType: string;
+  mapLat: string;
+  mapLng: string;
   employmentType: string;
   isCurrent: boolean;
   startMonth: string;
@@ -158,6 +160,8 @@ function toTimeline(row: typeof resumeEntries.$inferSelect): TimelineEntry {
     position: row.position,
     location: row.location ?? "",
     locationType: row.locationType ?? "",
+    mapLat: row.mapLat ?? "",
+    mapLng: row.mapLng ?? "",
     employmentType: row.employmentType ?? "",
     isCurrent: (row.isCurrent ?? 0) !== 0,
     startMonth: row.startMonth ?? "",
@@ -182,6 +186,8 @@ function timelineValues(input: Omit<TimelineEntry, "id" | "position">) {
     href: input.href,
     location: input.location,
     locationType: input.locationType,
+    mapLat: input.mapLat,
+    mapLng: input.mapLng,
     employmentType: input.employmentType,
     isCurrent: input.isCurrent ? 1 : 0,
     startMonth: input.startMonth,

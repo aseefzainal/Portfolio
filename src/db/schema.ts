@@ -54,6 +54,8 @@ export const resumeEntries = sqliteTable("resume_entries", {
   position: integer("position").notNull(),
   location: text("location").notNull().default(""),
   locationType: text("location_type").notNull().default(""),
+  mapLat: text("map_lat").notNull().default(""),
+  mapLng: text("map_lng").notNull().default(""),
   employmentType: text("employment_type").notNull().default(""),
   isCurrent: integer("is_current").notNull().default(0),
   startMonth: text("start_month").notNull().default(""),

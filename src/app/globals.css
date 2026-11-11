@@ -94,3 +94,78 @@
 section[id] {
   scroll-margin-top: 4.5rem;
 }
+
+.experience-map-shell,
+.experience-map,
+.experience-map .leaflet-container {
+  /* Keep pinch/pan on the map — don't let the browser zoom the whole page. */
+  touch-action: none !important;
+  -ms-touch-action: none !important;
+}
+
+.experience-map .leaflet-container {
+  font: inherit;
+  background: var(--muted);
+  cursor: grab;
+}
+
+.experience-map .leaflet-container:active {
+  cursor: grabbing;
+}
+
+.experience-map-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.experience-map-marker {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #3b82f6;
+  border: 2px solid #fff;
+  box-shadow:
+    0 0 0 4px rgb(59 130 246 / 28%),
+    0 1px 2px rgb(0 0 0 / 20%);
+}
+
+.experience-map-marker.is-current {
+  background: #059669;
+  box-shadow:
+    0 0 0 4px rgb(5 150 105 / 28%),
+    0 1px 2px rgb(0 0 0 / 20%);
+}
+
+.experience-map-marker.is-active {
+  transform: scale(1.2);
+  box-shadow:
+    0 0 0 5px rgb(23 23 23 / 18%),
+    0 1px 2px rgb(0 0 0 / 20%);
+}
+
+.dark .experience-map-marker.is-active {
+  box-shadow:
+    0 0 0 5px rgb(237 237 237 / 22%),
+    0 1px 2px rgb(0 0 0 / 35%);
+}
+
+.experience-map-tooltip {
+  border: none !important;
+  border-radius: 0.25rem !important;
+  background: transparent !important;
+  color: #171717 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+}
+
+.dark .experience-map-tooltip {
+  color: #ededed !important;
+}
+
+.experience-map-tooltip::before {
+  display: none !important;
+}
