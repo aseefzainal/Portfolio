@@ -18,6 +18,11 @@ const modules = [
     title: "Showcase",
     text: "Enable or disable public browser tools like Merge PDF and Split PDF.",
   },
+  {
+    href: "/admin/messages",
+    title: "Messages",
+    text: "Read contact form submissions and reply by email.",
+  },
 ];
 
 export default function AdminDashboardPage() {

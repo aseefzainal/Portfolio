@@ -119,6 +119,8 @@ export async function saveStudioTimelineEntry(
   const href = String(formData.get("href") ?? "").trim();
   const location = String(formData.get("location") ?? "").trim();
   const locationType = String(formData.get("locationType") ?? "").trim();
+  const mapLat = String(formData.get("mapLat") ?? "").trim();
+  const mapLng = String(formData.get("mapLng") ?? "").trim();
   const employmentType = String(formData.get("employmentType") ?? "").trim();
   const fieldOfStudy = String(formData.get("fieldOfStudy") ?? "").trim();
   const grade = String(formData.get("grade") ?? "").trim();
@@ -169,6 +171,15 @@ export async function saveStudioTimelineEntry(
   }
 
   if (href && !isHttpUrl(href)) errors.push("URL must start with http:// or https://.");
+  if (kind === "work" && (mapLat || mapLng)) {
+    const lat = Number(mapLat);
+    const lng = Number(mapLng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      errors.push("Map latitude and longitude must both be valid numbers.");
+    } else if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      errors.push("Map coordinates are out of range.");
+    }
+  }
   if (errors.length || !kind) return { error: errors.join(" ") || "Kind is required.", message: "" };
 
   const payload = {
@@ -180,6 +191,8 @@ export async function saveStudioTimelineEntry(
     href,
     location: kind === "work" ? location : "",
     locationType: kind === "work" ? locationType : "",
+    mapLat: kind === "work" ? mapLat : "",
+    mapLng: kind === "work" ? mapLng : "",
     employmentType: kind === "work" ? employmentType : "",
     isCurrent: kind === "work" ? isCurrent : false,
     startMonth: usesStructuredDates ? startMonth : "",
