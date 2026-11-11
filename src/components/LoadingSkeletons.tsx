@@ -202,6 +202,20 @@ export function ResumeStudioSkeleton() {
   );
 }
 
+export function ShowcasePageSkeleton() {
+  return (
+    <main className="px-5 py-10 sm:py-14">
+      <div className="mx-auto max-w-3xl">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="mt-2 h-10 w-48" />
+        <Skeleton className="mt-3 h-4 w-full max-w-xl" />
+        <Skeleton className="mt-2 h-4 w-full max-w-lg" />
+        <Skeleton className="mt-10 h-48 w-full rounded-md" />
+      </div>
+    </main>
+  );
+}
+
 export function AdminFormSkeleton() {
   return (
     <div className="grid max-w-xl gap-4">

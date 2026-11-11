@@ -14,6 +14,11 @@ const modules = [
   },
   { href: "/admin/about", title: "About", text: "Paragraphs and fact cards on the homepage." },
   {
+    href: "/admin/showcase",
+    title: "Showcase",
+    text: "Enable or disable public browser tools like Merge PDF and Split PDF.",
+  },
+  {
     href: "/admin/messages",
     title: "Messages",
     text: "Read contact form submissions and reply by email.",

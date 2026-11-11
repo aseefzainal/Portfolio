@@ -17,6 +17,11 @@ const links = [
     match: (path: string) => path === "/admin/about" || path.startsWith("/admin/about/"),
   },
   {
+    href: "/admin/showcase",
+    label: "Showcase",
+    match: (path: string) => path === "/admin/showcase" || path.startsWith("/admin/showcase/"),
+  },
+  {
     href: "/admin/messages",
     label: "Messages",
     match: (path: string) => path === "/admin/messages" || path.startsWith("/admin/messages/"),

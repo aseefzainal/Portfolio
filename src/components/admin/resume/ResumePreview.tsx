@@ -147,6 +147,7 @@ function ResumeBody({
   reorder?: ResumeReorderHandlers;
 }) {
   const { profile, experience, education, certificates, skills, projects } = draft;
+  const sections = profile.sections;
   const resumeExperience = experience.filter((item) => item.showOnResume);
   const resumeEducation = education.filter((item) => item.showOnResume);
   const resumeProjects = projects.filter((project) => project.showOnResume);
@@ -190,156 +191,178 @@ function ResumeBody({
         </Keep>
       ) : null}
 
-      <Section title="Experience" keepKey="section-experience" spacer={spacers["section-experience"] ?? 0}>
-        {resumeExperience.length === 0 ? (
-          <Keep id="experience-empty" spacer={spacers["experience-empty"] ?? 0}>
-            <p className="text-neutral-400">No experience yet.</p>
-          </Keep>
-        ) : (
-          <ul className="space-y-4">
-            {resumeExperience.map((item, index) => (
-              <SortableRow
-                key={item.id}
-                index={index}
-                keepId={`experience-${item.id}`}
-                spacer={spacers[`experience-${item.id}`] ?? 0}
-                enabled={Boolean(reorder?.experience)}
-                onMove={reorder?.experience}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <p className="font-medium">{item.title || "Title"}</p>
-                  <p className="text-[11px] text-neutral-500">{item.period}</p>
-                </div>
-                <p className="text-neutral-600">
-                  {[item.place, item.employmentType].filter(Boolean).join(" · ") || "Company"}
-                </p>
-                {item.location || item.locationType ? (
-                  <p className="text-[11px] text-neutral-500">
-                    {[item.location, item.locationType].filter(Boolean).join(" · ")}
-                  </p>
-                ) : null}
-                {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
-              </SortableRow>
-            ))}
-          </ul>
-        )}
-      </Section>
-
-      <Section title="Education" keepKey="section-education" spacer={spacers["section-education"] ?? 0}>
-        {resumeEducation.length === 0 ? (
-          <Keep id="education-empty" spacer={spacers["education-empty"] ?? 0}>
-            <p className="text-neutral-400">No education yet.</p>
-          </Keep>
-        ) : (
-          <ul className="space-y-4">
-            {resumeEducation.map((item, index) => (
-              <SortableRow
-                key={item.id}
-                index={index}
-                keepId={`education-${item.id}`}
-                spacer={spacers[`education-${item.id}`] ?? 0}
-                enabled={Boolean(reorder?.education)}
-                onMove={reorder?.education}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <p className="font-medium">{item.place || "School"}</p>
-                  <p className="text-[11px] text-neutral-500">{item.period}</p>
-                </div>
-                {[item.title, item.fieldOfStudy].filter(Boolean).length > 0 ? (
+      {sections.experience.resume ? (
+        <Section title="Experience" keepKey="section-experience" spacer={spacers["section-experience"] ?? 0}>
+          {resumeExperience.length === 0 ? (
+            <Keep id="experience-empty" spacer={spacers["experience-empty"] ?? 0}>
+              <p className="text-neutral-400">No experience yet.</p>
+            </Keep>
+          ) : (
+            <ul className="space-y-4">
+              {resumeExperience.map((item, index) => (
+                <SortableRow
+                  key={item.id}
+                  index={index}
+                  keepId={`experience-${item.id}`}
+                  spacer={spacers[`experience-${item.id}`] ?? 0}
+                  enabled={Boolean(reorder?.experience)}
+                  onMove={reorder?.experience}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                    <p className="font-medium">{item.title || "Title"}</p>
+                    <p className="text-[11px] text-neutral-500">{item.period}</p>
+                  </div>
                   <p className="text-neutral-600">
-                    {[item.title, item.fieldOfStudy].filter(Boolean).join(", ")}
+                    {[item.place, item.employmentType].filter(Boolean).join(" · ") || "Company"}
                   </p>
-                ) : null}
-                {item.grade ? <p className="text-[11px] text-neutral-500">Grade: {item.grade}</p> : null}
-                {item.activities ? (
-                  <p className="mt-1 text-neutral-700">{item.activities}</p>
-                ) : null}
-                {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
-              </SortableRow>
-            ))}
-          </ul>
-        )}
-      </Section>
-
-      <Section
-        title="Certificates"
-        keepKey="section-certificates"
-        spacer={spacers["section-certificates"] ?? 0}
-      >
-        {certificates.length === 0 ? (
-          <Keep id="certificates-empty" spacer={spacers["certificates-empty"] ?? 0}>
-            <p className="text-neutral-400">No certificates yet.</p>
-          </Keep>
-        ) : (
-          <ul className="space-y-4">
-            {certificates.map((item, index) => (
-              <SortableRow
-                key={item.id}
-                index={index}
-                keepId={`certificate-${item.id}`}
-                spacer={spacers[`certificate-${item.id}`] ?? 0}
-                enabled={Boolean(reorder?.certificates)}
-                onMove={reorder?.certificates}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <p className="font-medium">{item.title || "Title"}</p>
-                  <p className="text-[11px] text-neutral-500">{item.period}</p>
-                </div>
-                <p className="text-neutral-600">{item.place}</p>
-                {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
-                {item.href ? (
-                  <p className="mt-1 text-[11px] text-neutral-500 break-all">{item.href}</p>
-                ) : null}
-              </SortableRow>
-            ))}
-          </ul>
-        )}
-      </Section>
-
-      <Section title="Skills" keepKey="section-skills" spacer={spacers["section-skills"] ?? 0}>
-        {skills.length === 0 ? (
-          <Keep id="skills-empty" spacer={spacers["skills-empty"] ?? 0}>
-            <p className="text-neutral-400">No skills yet.</p>
-          </Keep>
-        ) : (
-          <Keep id="skills" spacer={spacers.skills ?? 0}>
-            <p className="text-neutral-700">
-              {skills.map((skill) => skill.name).filter(Boolean).join(" · ")}
-            </p>
-          </Keep>
-        )}
-      </Section>
-
-      <Section title="Projects" keepKey="section-projects" spacer={spacers["section-projects"] ?? 0}>
-        {resumeProjects.length === 0 ? (
-          <Keep id="projects-empty" spacer={spacers["projects-empty"] ?? 0}>
-            <p className="text-neutral-400">No projects selected for resume.</p>
-          </Keep>
-        ) : (
-          <ul className="space-y-4">
-            {resumeProjects.map((project, index) => (
-              <SortableRow
-                key={project.id}
-                index={index}
-                keepId={`project-${project.id}`}
-                spacer={spacers[`project-${project.id}`] ?? 0}
-                enabled={Boolean(reorder?.projects)}
-                onMove={reorder?.projects}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <p className="font-medium">{project.title || "Title"}</p>
-                  {project.stack.length > 0 ? (
-                    <p className="text-[11px] text-neutral-500">{project.stack.join(" · ")}</p>
+                  {item.location || item.locationType ? (
+                    <p className="text-[11px] text-neutral-500">
+                      {[item.location, item.locationType].filter(Boolean).join(" · ")}
+                    </p>
                   ) : null}
-                </div>
-                {project.description ? (
-                  <p className="mt-1 text-neutral-700">{project.description}</p>
-                ) : null}
-              </SortableRow>
-            ))}
-          </ul>
-        )}
-      </Section>
+                  {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
+                </SortableRow>
+              ))}
+            </ul>
+          )}
+        </Section>
+      ) : null}
+
+      {sections.education.resume ? (
+        <Section title="Education" keepKey="section-education" spacer={spacers["section-education"] ?? 0}>
+          {resumeEducation.length === 0 ? (
+            <Keep id="education-empty" spacer={spacers["education-empty"] ?? 0}>
+              <p className="text-neutral-400">No education yet.</p>
+            </Keep>
+          ) : (
+            <ul className="space-y-4">
+              {resumeEducation.map((item, index) => (
+                <SortableRow
+                  key={item.id}
+                  index={index}
+                  keepId={`education-${item.id}`}
+                  spacer={spacers[`education-${item.id}`] ?? 0}
+                  enabled={Boolean(reorder?.education)}
+                  onMove={reorder?.education}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                    <p className="font-medium">{item.place || "School"}</p>
+                    <p className="text-[11px] text-neutral-500">{item.period}</p>
+                  </div>
+                  {[item.title, item.fieldOfStudy].filter(Boolean).length > 0 ? (
+                    <p className="text-neutral-600">
+                      {[item.title, item.fieldOfStudy].filter(Boolean).join(", ")}
+                    </p>
+                  ) : null}
+                  {item.grade ? <p className="text-[11px] text-neutral-500">Grade: {item.grade}</p> : null}
+                  {item.activities ? (
+                    <p className="mt-1 text-neutral-700">{item.activities}</p>
+                  ) : null}
+                  {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
+                </SortableRow>
+              ))}
+            </ul>
+          )}
+        </Section>
+      ) : null}
+
+      {sections.certificates.resume ? (
+        <Section
+          title="Certificates"
+          keepKey="section-certificates"
+          spacer={spacers["section-certificates"] ?? 0}
+        >
+          {certificates.length === 0 ? (
+            <Keep id="certificates-empty" spacer={spacers["certificates-empty"] ?? 0}>
+              <p className="text-neutral-400">No certificates yet.</p>
+            </Keep>
+          ) : (
+            <ul className="space-y-4">
+              {certificates.map((item, index) => (
+                <SortableRow
+                  key={item.id}
+                  index={index}
+                  keepId={`certificate-${item.id}`}
+                  spacer={spacers[`certificate-${item.id}`] ?? 0}
+                  enabled={Boolean(reorder?.certificates)}
+                  onMove={reorder?.certificates}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                    <p className="font-medium">{item.title || "Title"}</p>
+                    <p className="text-[11px] text-neutral-500">{item.period}</p>
+                  </div>
+                  <p className="text-neutral-600">{item.place}</p>
+                  {item.detail ? <p className="mt-1 text-neutral-700">{item.detail}</p> : null}
+                  {item.href ? (
+                    <p className="mt-1 text-[11px] text-neutral-500 break-all">{item.href}</p>
+                  ) : null}
+                </SortableRow>
+              ))}
+            </ul>
+          )}
+        </Section>
+      ) : null}
+
+      {sections.skills.resume ? (
+        <Section title="Skills" keepKey="section-skills" spacer={spacers["section-skills"] ?? 0}>
+          {skills.length === 0 ? (
+            <Keep id="skills-empty" spacer={spacers["skills-empty"] ?? 0}>
+              <p className="text-neutral-400">No skills yet.</p>
+            </Keep>
+          ) : (
+            <Keep id="skills" spacer={spacers.skills ?? 0}>
+              <ul className="flex flex-wrap gap-1.5">
+                {skills.map((skill) => (
+                  <li
+                    key={skill.id}
+                    className={cn(
+                      "rounded border px-2 py-0.5 text-[11px] leading-4",
+                      skill.level === "advanced" && "border-sky-600 text-sky-700",
+                      skill.level === "proficient" && "border-neutral-500 text-neutral-800",
+                      skill.level === "familiar" && "border-neutral-300 text-neutral-400",
+                    )}
+                  >
+                    {skill.name || "Skill"}
+                  </li>
+                ))}
+              </ul>
+            </Keep>
+          )}
+        </Section>
+      ) : null}
+
+      {sections.projects.resume ? (
+        <Section title="Projects" keepKey="section-projects" spacer={spacers["section-projects"] ?? 0}>
+          {resumeProjects.length === 0 ? (
+            <Keep id="projects-empty" spacer={spacers["projects-empty"] ?? 0}>
+              <p className="text-neutral-400">No projects selected for resume.</p>
+            </Keep>
+          ) : (
+            <ul className="space-y-4">
+              {resumeProjects.map((project, index) => (
+                <SortableRow
+                  key={project.id}
+                  index={index}
+                  keepId={`project-${project.id}`}
+                  spacer={spacers[`project-${project.id}`] ?? 0}
+                  enabled={Boolean(reorder?.projects)}
+                  onMove={reorder?.projects}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                    <p className="font-medium">{project.title || "Title"}</p>
+                    {project.stack.length > 0 ? (
+                      <p className="text-[11px] text-neutral-500">{project.stack.join(" · ")}</p>
+                    ) : null}
+                  </div>
+                  {project.description ? (
+                    <p className="mt-1 text-neutral-700">{project.description}</p>
+                  ) : null}
+                </SortableRow>
+              ))}
+            </ul>
+          )}
+        </Section>
+      ) : null}
     </div>
   );
 }

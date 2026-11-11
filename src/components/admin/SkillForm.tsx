@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import type { FormState } from "@/lib/admin";
 import type { StoredSkill } from "@/db";
 import { skillIconOptions } from "@/lib/skill-icons";
+import { skillLevelLabels, skillLevels } from "@/lib/skill-level";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,21 @@ export function SkillForm({
             {skillIconOptions.map((slug) => (
               <SelectItem key={slug} value={slug}>
                 {slug}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="level">Level</Label>
+        <Select name="level" defaultValue={skill?.level ?? "proficient"}>
+          <SelectTrigger id="level" className="h-10 w-full">
+            <SelectValue placeholder="Proficient" />
+          </SelectTrigger>
+          <SelectContent>
+            {skillLevels.map((level) => (
+              <SelectItem key={level} value={level}>
+                {skillLevelLabels[level]}
               </SelectItem>
             ))}
           </SelectContent>

@@ -1,9 +1,11 @@
 import { SectionTitle } from "@/components/SectionTitle";
-import { listProjects } from "@/db";
+import { getSiteProfile, listProjects } from "@/db";
 import { io } from "next/cache";
 
 export async function Projects() {
   await io();
+  const profile = await getSiteProfile();
+  if (!profile.sections.projects.site) return null;
   const projects = await listProjects({ showOnSite: true });
 
   return (
