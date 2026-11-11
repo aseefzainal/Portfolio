@@ -54,6 +54,8 @@ export const resumeEntries = sqliteTable("resume_entries", {
   position: integer("position").notNull(),
   location: text("location").notNull().default(""),
   locationType: text("location_type").notNull().default(""),
+  mapLat: text("map_lat").notNull().default(""),
+  mapLng: text("map_lng").notNull().default(""),
   employmentType: text("employment_type").notNull().default(""),
   isCurrent: integer("is_current").notNull().default(0),
   startMonth: text("start_month").notNull().default(""),
@@ -86,6 +88,15 @@ export const projects = sqliteTable("projects", {
   image: text("image").notNull().default(""),
   showOnSite: integer("show_on_site").notNull().default(1),
   showOnResume: integer("show_on_resume").notNull().default(1),
+});
+
+export const contactMessages = sqliteTable("contact_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  message: text("message").notNull(),
+  createdAt: text("created_at").notNull(),
+  readAt: text("read_at"),
 });
 
 export type TimelineKind = "work" | "education" | "certificate";

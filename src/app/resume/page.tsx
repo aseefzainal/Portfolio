@@ -5,6 +5,7 @@ import { ResumePreview } from "@/components/admin/resume/ResumePreview";
 import type { ResumeDraft } from "@/components/admin/resume/types";
 import { HeaderEffect } from "@/components/ClientEffects";
 import { Logo } from "@/components/Logo";
+import { ResumeDownloadButton } from "@/components/resume/ResumeDownloadButton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { profile as fallbackProfile } from "@/data/profile";
 import { getSiteProfile, listProjects, listSkills, listTimelineEntries } from "@/db";
@@ -56,8 +57,13 @@ async function ResumeContent() {
       </header>
       <main className="px-5 py-8 sm:py-12">
         <div className="mx-auto w-full max-w-[210mm]">
-          <div className="mb-4">
+          <div className="mb-4 flex items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">Resume</p>
+            {profile.resumePublished ? (
+              <ResumeDownloadButton
+                filename={`${profile.name.split(" ")[0] || "resume"}-resume.pdf`}
+              />
+            ) : null}
           </div>
 
           {profile.resumePublished ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { CheckCircle2Icon, CircleAlertIcon } from "lucide-react";
 import {
   deleteStudioProject,
@@ -41,6 +41,7 @@ import type { TimelineKind } from "@/db/schema";
 import { ProfilePhotoField } from "@/components/admin/ProfilePhotoField";
 import { ProjectImageField } from "@/components/admin/ProjectImageField";
 import { ProjectStackField } from "@/components/admin/ProjectStackField";
+import { geocodeLocation } from "@/lib/geocode";
 import { parseProfilePhotoShape } from "@/lib/profile-photo";
 import { skillIconOptions } from "@/lib/skill-icons";
 import {
@@ -339,7 +340,14 @@ function TimelineEditor({
   const [state, action, pending] = useActionState(saveStudioTimelineEntry, initialStudio);
   const [pendingDelete, startDelete] = useTransition();
   const [deleteError, setDeleteError] = useState("");
+  const [geocodeStatus, setGeocodeStatus] = useState<
+    "idle" | "loading" | "found" | "missing" | "error"
+  >("idle");
   const selected = items.find((item) => item.id === selectedId) ?? null;
+  const itemsRef = useRef(items);
+  const geocodeEntryId = useRef<number | null>(null);
+  const lastGeocodedLocation = useRef("");
+  itemsRef.current = items;
 
   useEffect(() => {
     if (state.id && selectedId !== null && selectedId < 1) {
@@ -349,6 +357,68 @@ function TimelineEditor({
     // Only sync when save returns a new id.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.id]);
+
+  useEffect(() => {
+    if (kind !== "work" || !selected) {
+      setGeocodeStatus("idle");
+      return;
+    }
+
+    const entryId = selected.id;
+    const query = selected.location.trim();
+
+    // Switching entries: keep saved coords, don't re-fetch until location changes.
+    if (geocodeEntryId.current !== entryId) {
+      geocodeEntryId.current = entryId;
+      lastGeocodedLocation.current = query;
+      setGeocodeStatus(query && selected.mapLat && selected.mapLng ? "found" : "idle");
+      return;
+    }
+
+    if (query === lastGeocodedLocation.current) return;
+
+    if (!query) {
+      lastGeocodedLocation.current = "";
+      setGeocodeStatus("idle");
+      onChangeItems(
+        itemsRef.current.map((item) =>
+          item.id === entryId ? { ...item, mapLat: "", mapLng: "" } : item,
+        ),
+      );
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setGeocodeStatus("loading");
+      void geocodeLocation(query, controller.signal)
+        .then((result) => {
+          if (controller.signal.aborted) return;
+          lastGeocodedLocation.current = query;
+          if (!result) {
+            setGeocodeStatus("missing");
+            return;
+          }
+          onChangeItems(
+            itemsRef.current.map((item) =>
+              item.id === entryId ? { ...item, mapLat: result.lat, mapLng: result.lng } : item,
+            ),
+          );
+          setGeocodeStatus("found");
+        })
+        .catch(() => {
+          if (controller.signal.aborted) return;
+          setGeocodeStatus("error");
+        });
+    }, 700);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+    // Geocode when the selected work location text changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, selected?.id, selected?.location]);
 
   function patchSelected(patch: Partial<TimelineEntry>) {
     if (!selected) return;
@@ -368,6 +438,8 @@ function TimelineEditor({
       position: items.length,
       location: "",
       locationType: kind === "work" ? "On-site" : "",
+      mapLat: "",
+      mapLng: "",
       employmentType: kind === "work" ? "Full-time" : "",
       isCurrent: false,
       startMonth: "",
@@ -480,6 +552,8 @@ function TimelineEditor({
           <input type="hidden" name="period" value={selected.period} />
           <input type="hidden" name="location" value={selected.location} />
           <input type="hidden" name="locationType" value={selected.locationType} />
+          <input type="hidden" name="mapLat" value={selected.mapLat} />
+          <input type="hidden" name="mapLng" value={selected.mapLng} />
           <input type="hidden" name="employmentType" value={selected.employmentType} />
           <input type="hidden" name="fieldOfStudy" value={selected.fieldOfStudy} />
           <input type="hidden" name="grade" value={selected.grade} />
@@ -528,6 +602,42 @@ function TimelineEditor({
                     onChange={(event) => patchSelected({ location: event.target.value })}
                   />
                 </div>
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label>Map marker</Label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${kind}-mapLat`}>Latitude</Label>
+                      <Input
+                        id={`${kind}-mapLat`}
+                        className="h-10"
+                        placeholder="Auto from location"
+                        value={selected.mapLat}
+                        readOnly
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${kind}-mapLng`}>Longitude</Label>
+                      <Input
+                        id={`${kind}-mapLng`}
+                        className="h-10"
+                        placeholder="Auto from location"
+                        value={selected.mapLng}
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {geocodeStatus === "loading"
+                      ? "Looking up coordinates…"
+                      : geocodeStatus === "found"
+                        ? "Coordinates filled automatically from the location address."
+                        : geocodeStatus === "missing"
+                          ? "No coordinates found for that address. Try a clearer place name."
+                          : geocodeStatus === "error"
+                            ? "Could not look up that address. Check your connection and try again."
+                            : "Latitude and longitude update automatically when you enter a location."}
+                  </p>
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor={`${kind}-locationType`}>Location type</Label>
                   <Select
@@ -551,7 +661,7 @@ function TimelineEditor({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-2 sm:col-span-2">
+                <div className="grid gap-2">
                   <Label htmlFor={`${kind}-employmentType`}>Employment type</Label>
                   <Select
                     value={selected.employmentType || "__none__"}
