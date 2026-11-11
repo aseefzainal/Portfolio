@@ -157,8 +157,9 @@ function ResumeBody({
     <div
       data-resume-body
       className={cn(
-        "px-10 py-10 text-[12px] leading-5 text-neutral-900 sm:px-11 sm:py-11",
-        sortable && "pl-12 sm:pl-12",
+        // Fixed padding (not sm:) so measure + paginated pages share the same insets.
+        "px-10 py-10 text-[12px] leading-5 text-neutral-900",
+        sortable && "pl-12",
       )}
     >
       <Keep id="header" kind="block" spacer={spacers.header ?? 0}>
@@ -361,7 +362,7 @@ function readPageInset(measure: HTMLElement) {
 /** Push whole blocks to the next page instead of splitting them across the A4 cut. */
 function computeSpacers(measure: HTMLElement, pageHeight: number): Record<string, number> {
   const rootTop = measure.getBoundingClientRect().top;
-  const pageInsetTop = readPageInset(measure);
+  const pageInset = readPageInset(measure);
   const blocks = [...measure.querySelectorAll<HTMLElement>("[data-resume-keep]")];
   const next: Record<string, number> = {};
   let pageBottom = pageHeight;
@@ -377,24 +378,25 @@ function computeSpacers(measure: HTMLElement, pageHeight: number): Record<string
     const top = naturalTop + extra;
     const bottom = top + height;
 
-    while (top >= pageBottom - 0.5) {
+    while (top >= pageBottom - pageInset - 0.5) {
       pageBottom += pageHeight;
     }
 
-    if (bottom <= pageBottom + 0.5) continue;
+    // Keep bottom page margin equal to the top padding.
+    if (bottom <= pageBottom - pageInset + 0.5) continue;
 
     let targetKey = key;
     let targetTop = top;
     const prev = index > 0 ? blocks[index - 1] : null;
     if (prev?.dataset.resumeKeep === "heading" && prev.dataset.resumeKey) {
       const headingTop = prev.getBoundingClientRect().top - rootTop + extra;
-      if (headingTop < pageBottom - 0.5) {
+      if (headingTop < pageBottom - pageInset - 0.5) {
         targetKey = prev.dataset.resumeKey;
         targetTop = headingTop;
       }
     }
 
-    const push = pageBottom - targetTop + pageInsetTop;
+    const push = pageBottom - targetTop + pageInset;
     if (push <= 0.5) continue;
     next[targetKey] = (next[targetKey] ?? 0) + push;
     extra += push;
@@ -528,7 +530,7 @@ export function ResumePreview({
         className="pointer-events-none fixed top-0 -left-[10000px] -z-10 opacity-0"
         style={{ width: A4_WIDTH_PX }}
       >
-        <div ref={measureRef}>
+        <div ref={measureRef} data-resume-export-root className="bg-white">
           <ResumeBody draft={draft} spacers={spacers} />
         </div>
       </div>
@@ -572,33 +574,40 @@ export function ResumePreview({
           className="flex max-w-full flex-col"
           style={{ width: A4_WIDTH_PX * scale, gap: `${Math.max(8, 16 * scale)}px` }}
         >
-          {Array.from({ length: pageCount }, (_, index) => (
-            <div key={index} data-preview-page={index}>
-              {pageCount > 1 ? (
-                <p className="mb-1.5 text-xs text-muted-foreground">
-                  Page {index + 1} of {pageCount}
-                </p>
-              ) : null}
-              <div
-                className="relative overflow-hidden"
-                style={{ width: A4_WIDTH_PX * scale, height: A4_HEIGHT_PX * scale }}
-              >
+          {Array.from({ length: pageCount }, (_, index) => {
+            const isLast = index === pageCount - 1;
+            const remaining = Math.max(1, contentHeight - index * A4_HEIGHT_PX);
+            // Hug short last pages; keep at least top+bottom padding worth of height.
+            const pageHeightPx = isLast ? Math.min(A4_HEIGHT_PX, remaining) : A4_HEIGHT_PX;
+
+            return (
+              <div key={index} data-preview-page={index}>
+                {pageCount > 1 ? (
+                  <p className="mb-1.5 text-xs text-muted-foreground">
+                    Page {index + 1} of {pageCount}
+                  </p>
+                ) : null}
                 <div
-                  className="overflow-hidden rounded-sm border border-border bg-white"
-                  style={{
-                    width: A4_WIDTH_PX,
-                    height: A4_HEIGHT_PX,
-                    transform: `scale(${scale})`,
-                    transformOrigin: "top left",
-                  }}
+                  className="relative overflow-hidden"
+                  style={{ width: A4_WIDTH_PX * scale, height: pageHeightPx * scale }}
                 >
-                  <div style={{ transform: `translateY(-${index * A4_HEIGHT_PX}px)` }}>
-                    <ResumeBody draft={draft} spacers={spacers} />
+                  <div
+                    className="overflow-hidden rounded-sm border border-border bg-white"
+                    style={{
+                      width: A4_WIDTH_PX,
+                      height: pageHeightPx,
+                      transform: `scale(${scale})`,
+                      transformOrigin: "top left",
+                    }}
+                  >
+                    <div style={{ transform: `translateY(-${index * A4_HEIGHT_PX}px)` }}>
+                      <ResumeBody draft={draft} spacers={spacers} />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

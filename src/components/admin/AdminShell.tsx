@@ -2,7 +2,11 @@ import { signOut } from "@/auth";
 import { auth } from "@/auth";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminNav } from "@/components/admin/AdminNav";
-import { getSiteProfile } from "@/db";
+import {
+  countUnreadContactMessages,
+  getSiteProfile,
+  listUnreadContactMessages,
+} from "@/db";
 import { io } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -11,12 +15,22 @@ async function logoutAction() {
   await signOut({ redirectTo: "/login" });
 }
 
+function notificationPreview(message: string) {
+  const cleaned = message.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= 80) return cleaned;
+  return `${cleaned.slice(0, 80)}…`;
+}
+
 export async function AdminShell({ children }: { children: React.ReactNode }) {
   await io();
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const profile = await getSiteProfile();
+  const [profile, unreadMessages, unreadCount] = await Promise.all([
+    getSiteProfile(),
+    listUnreadContactMessages(5),
+    countUnreadContactMessages(),
+  ]);
 
   return (
     <div className="min-h-dvh bg-background md:flex">
@@ -27,7 +41,7 @@ export async function AdminShell({ children }: { children: React.ReactNode }) {
             <p className="mt-1 truncate text-xs text-muted-foreground">Portfolio CMS</p>
           </div>
 
-          <AdminNav />
+          <AdminNav unreadMessages={unreadCount} />
         </div>
       </aside>
 
@@ -37,6 +51,14 @@ export async function AdminShell({ children }: { children: React.ReactNode }) {
           email={session.user.email ?? profile.email}
           photo={profile.photo}
           photoShape={profile.photoShape}
+          unreadCount={unreadCount}
+          notifications={unreadMessages.map((message) => ({
+            id: message.id,
+            title: message.name,
+            preview: notificationPreview(message.message),
+            href: `/admin/messages/${message.id}`,
+            createdAt: message.createdAt,
+          }))}
           logoutAction={logoutAction}
         />
         <main className="min-w-0 flex-1 px-5 py-8 md:px-8">

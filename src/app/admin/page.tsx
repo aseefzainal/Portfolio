@@ -13,6 +13,11 @@ const modules = [
     text: "Edit profile, timeline, skills, and projects. Choose what appears on the homepage and resume.",
   },
   { href: "/admin/about", title: "About", text: "Paragraphs and fact cards on the homepage." },
+  {
+    href: "/admin/messages",
+    title: "Messages",
+    text: "Read contact form submissions and reply by email.",
+  },
 ];
 
 export default function AdminDashboardPage() {

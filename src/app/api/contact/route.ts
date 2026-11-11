@@ -1,3 +1,5 @@
+import { createContactMessage } from "@/db";
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function field(body: unknown, key: string) {
@@ -28,32 +30,32 @@ export async function POST(request: Request) {
     );
   }
 
-  const accessKey = process.env.WEB3FORMS_ACCESS_KEY;
-  if (!accessKey) {
-    return json(
-      { error: "Email is not configured yet. Add WEB3FORMS_ACCESS_KEY to .env.local." },
-      503,
-    );
+  try {
+    await createContactMessage({ name, email, message });
+  } catch {
+    return json({ error: "The message could not be saved. Try again." }, 502);
   }
 
-  const response = await fetch("https://api.web3forms.com/submit", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      access_key: accessKey,
-      subject: `Portfolio message from ${name}`,
-      name,
-      email,
-      message,
-    }),
-  });
-
-  const result = (await response.json().catch(() => null)) as { success?: boolean } | null;
-  if (!response.ok || !result?.success) {
-    return json({ error: "The message could not be sent. Try again." }, 502);
+  const accessKey = process.env.WEB3FORMS_ACCESS_KEY;
+  if (accessKey) {
+    try {
+      await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          access_key: accessKey,
+          subject: `Portfolio message from ${name}`,
+          name,
+          email,
+          message,
+        }),
+      });
+    } catch {
+      // In-app inbox already has the message; email is optional.
+    }
   }
 
   return json({ ok: true }, 200);
