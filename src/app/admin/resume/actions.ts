@@ -14,12 +14,14 @@ import {
   setSkillPositions,
   setTimelineEntryPositions,
   updateProject,
+  updateSectionVisibility,
   updateSiteProfile,
   updateSkill,
   updateTimelineEntry,
 } from "@/db";
 import type { TimelineKind } from "@/db/schema";
 import { isHttpUrl, isProfilePhoto, isProjectImage, readId, requireAdmin } from "@/lib/admin";
+import { isSectionKey } from "@/lib/section-visibility";
 import { formatTimelinePeriod } from "@/lib/timeline-period";
 import { pathForKind } from "@/lib/timeline-admin";
 
@@ -81,9 +83,24 @@ export async function saveStudioProfile(
     photo,
     photoShape,
     resumePublished: current.resumePublished,
+    sections: current.sections,
   });
   revalidateStudio();
   return { error: "", message: "Profile saved." };
+}
+
+export async function saveStudioSectionVisibility(formData: FormData) {
+  await requireAdmin();
+  const section = String(formData.get("section") ?? "").trim();
+  if (!isSectionKey(section)) return;
+  const site = String(formData.get("site") ?? "") === "1";
+  const resume = String(formData.get("resume") ?? "") === "1";
+  const current = await getSiteProfile();
+  await updateSectionVisibility({
+    ...current.sections,
+    [section]: { site, resume },
+  });
+  revalidateStudio();
 }
 
 export async function publishStudioResume(
@@ -233,17 +250,22 @@ export async function saveStudioSkill(_state: StudioState, formData: FormData): 
   const rawIcon = String(formData.get("iconSlug") ?? "").trim();
   const iconSlug = rawIcon === "__none__" ? "" : rawIcon;
   const color = String(formData.get("color") ?? "").trim();
+  const levelRaw = String(formData.get("level") ?? "").trim();
+  const level =
+    levelRaw === "advanced" || levelRaw === "familiar" || levelRaw === "proficient"
+      ? levelRaw
+      : "proficient";
   const rawId = Number(formData.get("id"));
 
   if (!name) return { error: "Name is required.", message: "" };
 
   if (Number.isInteger(rawId) && rawId > 0) {
-    await updateSkill(rawId, { name, iconSlug, color });
+    await updateSkill(rawId, { name, iconSlug, color, level });
     revalidateStudio();
     return { error: "", message: "Skill saved.", id: rawId };
   }
 
-  const id = await insertSkill({ name, iconSlug, color });
+  const id = await insertSkill({ name, iconSlug, color, level });
   revalidateStudio();
   return { error: "", message: "Skill added.", id };
 }

@@ -1,14 +1,17 @@
 import Link from "next/link";
-import { getSiteProfile } from "@/db";
+import { getSiteProfile, hasEnabledShowcaseTools } from "@/db";
 import { io } from "next/cache";
 
 export async function Hero() {
   await io();
-  const profile = await getSiteProfile();
+  const [profile, showShowcase] = await Promise.all([getSiteProfile(), hasEnabledShowcaseTools()]);
   const actions = [
     { href: profile.github, label: "GitHub", external: true, primary: true },
     { href: profile.linkedin, label: "LinkedIn", external: true, primary: false },
     { href: "/resume", label: "Resume", external: false, primary: false },
+    ...(showShowcase
+      ? [{ href: "/showcase", label: "Showcase", external: false, primary: false }]
+      : []),
   ];
 
   return (

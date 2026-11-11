@@ -1,10 +1,12 @@
 import { ExperienceMapPanel } from "@/components/ExperienceMap";
 import { SectionTitle } from "@/components/SectionTitle";
-import { listTimelineEntries } from "@/db";
+import { getSiteProfile, listTimelineEntries } from "@/db";
 import { io } from "next/cache";
 
 export async function Experience() {
   await io();
+  const profile = await getSiteProfile();
+  if (!profile.sections.experience.site) return null;
   const items = await listTimelineEntries("work", { showOnSite: true });
 
   return (

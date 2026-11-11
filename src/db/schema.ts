@@ -28,6 +28,7 @@ export const profiles = sqliteTable("profiles", {
   photo: text("photo").notNull().default(""),
   photoShape: text("photo_shape").notNull().default("circle"),
   resumePublished: integer("resume_published").notNull().default(0),
+  sectionVisibility: text("section_visibility").notNull().default("{}"),
 });
 
 export const aboutParagraphs = sqliteTable("about_paragraphs", {
@@ -74,6 +75,7 @@ export const skills = sqliteTable("skills", {
   name: text("name").notNull(),
   iconSlug: text("icon_slug").notNull().default(""),
   color: text("color").notNull().default(""),
+  level: text("level").notNull().default("proficient"),
   position: integer("position").notNull(),
 });
 
@@ -88,6 +90,16 @@ export const projects = sqliteTable("projects", {
   image: text("image").notNull().default(""),
   showOnSite: integer("show_on_site").notNull().default(1),
   showOnResume: integer("show_on_resume").notNull().default(1),
+});
+
+export const showcaseTools = sqliteTable("showcase_tools", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  href: text("href").notNull(),
+  enabled: integer("enabled").notNull().default(1),
+  position: integer("position").notNull(),
 });
 
 export const contactMessages = sqliteTable("contact_messages", {

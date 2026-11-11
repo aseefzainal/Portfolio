@@ -10,6 +10,7 @@ import {
   reorderStudioTimelineEntries,
   saveStudioProfile,
   saveStudioProject,
+  saveStudioSectionVisibility,
   saveStudioSkill,
   saveStudioTimelineEntry,
   type StudioState,
@@ -43,7 +44,9 @@ import { ProjectImageField } from "@/components/admin/ProjectImageField";
 import { ProjectStackField } from "@/components/admin/ProjectStackField";
 import { geocodeLocation } from "@/lib/geocode";
 import { parseProfilePhotoShape } from "@/lib/profile-photo";
+import type { SectionFlags, SectionKey } from "@/lib/section-visibility";
 import { skillIconOptions } from "@/lib/skill-icons";
+import { skillLevelLabels, skillLevels } from "@/lib/skill-level";
 import {
   employmentTypes,
   formatTimelinePeriod,
@@ -109,6 +112,22 @@ export function ResumeStudio({
     void reorderStudioProjects(formData);
   }
 
+  function patchSectionVisibility(section: SectionKey, patch: Partial<SectionFlags>) {
+    const nextFlags = { ...draft.profile.sections[section], ...patch };
+    setDraft((prev) => ({
+      ...prev,
+      profile: {
+        ...prev.profile,
+        sections: { ...prev.profile.sections, [section]: nextFlags },
+      },
+    }));
+    const formData = new FormData();
+    formData.set("section", section);
+    formData.set("site", nextFlags.site ? "1" : "0");
+    formData.set("resume", nextFlags.resume ? "1" : "0");
+    void saveStudioSectionVisibility(formData);
+  }
+
   function reorderExperience(fromIndex: number, toIndex: number) {
     const visible = draft.experience.filter((item) => item.showOnResume);
     const next = moveVisibleItem(draft.experience, visible, fromIndex, toIndex);
@@ -169,6 +188,8 @@ export function ResumeStudio({
               selectedId={selected.work}
               onSelect={(id) => setSelected((prev) => ({ ...prev, work: id }))}
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, experience: items }))}
+              sectionVisibility={draft.profile.sections.experience}
+              onSectionVisibilityChange={(patch) => patchSectionVisibility("experience", patch)}
             />
           </TabsContent>
 
@@ -182,6 +203,8 @@ export function ResumeStudio({
               selectedId={selected.education}
               onSelect={(id) => setSelected((prev) => ({ ...prev, education: id }))}
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, education: items }))}
+              sectionVisibility={draft.profile.sections.education}
+              onSectionVisibilityChange={(patch) => patchSectionVisibility("education", patch)}
             />
           </TabsContent>
 
@@ -195,6 +218,8 @@ export function ResumeStudio({
               selectedId={selected.certificate}
               onSelect={(id) => setSelected((prev) => ({ ...prev, certificate: id }))}
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, certificates: items }))}
+              sectionVisibility={draft.profile.sections.certificates}
+              onSectionVisibilityChange={(patch) => patchSectionVisibility("certificates", patch)}
             />
           </TabsContent>
 
@@ -204,6 +229,8 @@ export function ResumeStudio({
               selectedId={selected.skill}
               onSelect={(id) => setSelected((prev) => ({ ...prev, skill: id }))}
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, skills: items }))}
+              sectionVisibility={draft.profile.sections.skills}
+              onSectionVisibilityChange={(patch) => patchSectionVisibility("skills", patch)}
             />
           </TabsContent>
 
@@ -214,6 +241,8 @@ export function ResumeStudio({
               selectedId={selected.project}
               onSelect={(id) => setSelected((prev) => ({ ...prev, project: id }))}
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, projects: items }))}
+              sectionVisibility={draft.profile.sections.projects}
+              onSectionVisibilityChange={(patch) => patchSectionVisibility("projects", patch)}
             />
           </TabsContent>
         </Tabs>
@@ -318,6 +347,33 @@ function ProfileEditor({
   );
 }
 
+function SectionVisibilityBar({
+  value,
+  onChange,
+}: {
+  value: SectionFlags;
+  onChange: (patch: Partial<SectionFlags>) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-4 rounded-md border px-3 py-2.5">
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={value.site}
+          onCheckedChange={(checked) => onChange({ site: checked === true })}
+        />
+        <span>Show on homepage</span>
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={value.resume}
+          onCheckedChange={(checked) => onChange({ resume: checked === true })}
+        />
+        <span>Show on resume</span>
+      </label>
+    </div>
+  );
+}
+
 function TimelineEditor({
   kind,
   title,
@@ -327,6 +383,8 @@ function TimelineEditor({
   selectedId,
   onSelect,
   onChangeItems,
+  sectionVisibility,
+  onSectionVisibilityChange,
 }: {
   kind: TimelineKind;
   title: string;
@@ -336,6 +394,8 @@ function TimelineEditor({
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   onChangeItems: (items: TimelineEntry[]) => void;
+  sectionVisibility: SectionFlags;
+  onSectionVisibilityChange: (patch: Partial<SectionFlags>) => void;
 }) {
   const [state, action, pending] = useActionState(saveStudioTimelineEntry, initialStudio);
   const [pendingDelete, startDelete] = useTransition();
@@ -523,6 +583,8 @@ function TimelineEditor({
           </Button>
         </div>
       </div>
+
+      <SectionVisibilityBar value={sectionVisibility} onChange={onSectionVisibilityChange} />
 
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">No entries yet. Add one to start editing.</p>
@@ -1116,11 +1178,15 @@ function SkillsEditor({
   selectedId,
   onSelect,
   onChangeItems,
+  sectionVisibility,
+  onSectionVisibilityChange,
 }: {
   items: StoredSkill[];
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   onChangeItems: (items: StoredSkill[]) => void;
+  sectionVisibility: SectionFlags;
+  onSectionVisibilityChange: (patch: Partial<SectionFlags>) => void;
 }) {
   const [state, action, pending] = useActionState(saveStudioSkill, initialStudio);
   const [pendingDelete, startDelete] = useTransition();
@@ -1142,7 +1208,14 @@ function SkillsEditor({
 
   function addSkill() {
     const id = nextTempId(items);
-    const skill: StoredSkill = { id, name: "", iconSlug: "", color: "", position: items.length };
+    const skill: StoredSkill = {
+      id,
+      name: "",
+      iconSlug: "",
+      color: "",
+      level: "proficient",
+      position: items.length,
+    };
     onChangeItems([...items, skill]);
     onSelect(id);
   }
@@ -1190,6 +1263,8 @@ function SkillsEditor({
         </div>
       </div>
 
+      <SectionVisibilityBar value={sectionVisibility} onChange={onSectionVisibilityChange} />
+
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">No skills yet. Add one to start editing.</p>
       ) : (
@@ -1223,6 +1298,29 @@ function SkillsEditor({
             />
           </div>
           <div className="grid gap-2">
+            <Label htmlFor="skill-level">Level</Label>
+            <Select
+              name="level"
+              value={selected.level}
+              onValueChange={(value) => {
+                if (value === "advanced" || value === "proficient" || value === "familiar") {
+                  patchSelected({ level: value });
+                }
+              }}
+            >
+              <SelectTrigger id="skill-level" className="h-10 w-full">
+                <SelectValue placeholder="Proficient" />
+              </SelectTrigger>
+              <SelectContent>
+                {skillLevels.map((level) => (
+                  <SelectItem key={level} value={level}>
+                    {skillLevelLabels[level]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
             <Label htmlFor="skill-icon">Icon</Label>
             <Select
               name="iconSlug"
@@ -1245,7 +1343,7 @@ function SkillsEditor({
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="skill-color">Color</Label>
+            <Label htmlFor="skill-color">Icon color</Label>
             <Input
               id="skill-color"
               name="color"
@@ -1276,12 +1374,16 @@ function ProjectsEditor({
   selectedId,
   onSelect,
   onChangeItems,
+  sectionVisibility,
+  onSectionVisibilityChange,
 }: {
   items: StoredProject[];
   skills: StoredSkill[];
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   onChangeItems: (items: StoredProject[]) => void;
+  sectionVisibility: SectionFlags;
+  onSectionVisibilityChange: (patch: Partial<SectionFlags>) => void;
 }) {
   const [state, action, pending] = useActionState(saveStudioProject, initialStudio);
   const [pendingDelete, startDelete] = useTransition();
@@ -1368,6 +1470,8 @@ function ProjectsEditor({
           </Button>
         </div>
       </div>
+
+      <SectionVisibilityBar value={sectionVisibility} onChange={onSectionVisibilityChange} />
 
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">No projects yet. Add one to start editing.</p>

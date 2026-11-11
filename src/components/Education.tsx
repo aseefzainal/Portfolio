@@ -1,9 +1,11 @@
 import { SectionTitle } from "@/components/SectionTitle";
-import { listTimelineEntries } from "@/db";
+import { getSiteProfile, listTimelineEntries } from "@/db";
 import { io } from "next/cache";
 
 export async function Education() {
   await io();
+  const profile = await getSiteProfile();
+  if (!profile.sections.education.site) return null;
   const items = await listTimelineEntries("education", { showOnSite: true });
 
   return (

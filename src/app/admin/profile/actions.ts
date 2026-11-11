@@ -45,6 +45,7 @@ export async function saveProfile(_state: ProfileFormState, formData: FormData):
     photo,
     photoShape,
     resumePublished: current.resumePublished,
+    sections: current.sections,
   });
 
   revalidatePath("/");
