@@ -1,4 +1,4 @@
-CREATE TABLE showcase_tools (
+CREATE TABLE IF NOT EXISTS showcase_tools (
   id integer PRIMARY KEY AUTOINCREMENT,
   slug text NOT NULL UNIQUE,
   title text NOT NULL,
@@ -8,7 +8,7 @@ CREATE TABLE showcase_tools (
   position integer NOT NULL
 );
 
-INSERT INTO showcase_tools (slug, title, description, href, enabled, position) VALUES
+INSERT OR IGNORE INTO showcase_tools (slug, title, description, href, enabled, position) VALUES
   (
     'merge-pdf',
     'Merge PDF',

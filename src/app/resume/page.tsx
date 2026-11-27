@@ -7,14 +7,21 @@ import { HeaderEffect } from "@/components/ClientEffects";
 import { Logo } from "@/components/Logo";
 import { ResumeDownloadButton } from "@/components/resume/ResumeDownloadButton";
 import { Skeleton } from "@/components/ui/skeleton";
-import { profile as fallbackProfile } from "@/data/profile";
 import { getSiteProfile, listProjects, listSkills, listTimelineEntries } from "@/db";
 import { io } from "next/cache";
 
-export const metadata: Metadata = {
-  title: `${fallbackProfile.name} · Resume`,
-  description: `Resume for ${fallbackProfile.name}.`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await io();
+  try {
+    const profile = await getSiteProfile();
+    return {
+      title: `${profile.name} · Resume`,
+      description: `Resume for ${profile.name}. ${profile.role} · ${profile.location}`,
+    };
+  } catch {
+    return { title: "Resume", description: "Portfolio resume" };
+  }
+}
 
 async function ResumeContent() {
   await io();

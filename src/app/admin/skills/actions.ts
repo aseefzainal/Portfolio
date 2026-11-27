@@ -16,9 +16,10 @@ function readSkill(formData: FormData) {
   const rawIcon = String(formData.get("iconSlug") ?? "").trim();
   const iconSlug = rawIcon === "__none__" ? "" : rawIcon;
   const color = String(formData.get("color") ?? "").trim();
+  const category = String(formData.get("category") ?? "").trim();
   const level = parseSkillLevel(String(formData.get("level") ?? ""));
-  if (!name) return { error: "Name is required.", name, iconSlug, color, level };
-  return { error: "", name, iconSlug, color, level };
+  if (!name) return { error: "Name is required.", name, iconSlug, color, level, category };
+  return { error: "", name, iconSlug, color, level, category };
 }
 
 export async function createSkill(_state: FormState, formData: FormData): Promise<FormState> {
@@ -30,6 +31,7 @@ export async function createSkill(_state: FormState, formData: FormData): Promis
     iconSlug: skill.iconSlug,
     color: skill.color,
     level: skill.level,
+    category: skill.category,
   });
   revalidateSkills();
   redirect("/admin/skills");
@@ -46,6 +48,7 @@ export async function saveSkill(_state: FormState, formData: FormData): Promise<
     iconSlug: skill.iconSlug,
     color: skill.color,
     level: skill.level,
+    category: skill.category,
   });
   revalidateSkills();
   redirect("/admin/skills");

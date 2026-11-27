@@ -7,10 +7,15 @@ import {
   deleteAboutParagraph,
   insertAboutFact,
   insertAboutParagraph,
+  listAboutFacts,
+  listAboutParagraphs,
+  setAboutFactPositions,
+  setAboutParagraphPositions,
   updateAboutFact,
   updateAboutParagraph,
 } from "@/db";
 import { readId, requireAdmin, type FormState } from "@/lib/admin";
+import { moveItem } from "@/lib/reorder";
 
 function revalidateAbout() {
   revalidatePath("/");
@@ -73,4 +78,32 @@ export async function removeFactAction(formData: FormData) {
   if (id) await deleteAboutFact(id);
   revalidateAbout();
   redirect("/admin/about");
+}
+
+export async function moveParagraphAction(formData: FormData) {
+  await requireAdmin();
+  const id = readId(formData);
+  const direction = String(formData.get("direction") ?? "");
+  if (!id || (direction !== "up" && direction !== "down")) return;
+  const items = await listAboutParagraphs();
+  const fromIndex = items.findIndex((item) => item.id === id);
+  if (fromIndex < 0) return;
+  const toIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
+  const next = moveItem(items, fromIndex, toIndex);
+  await setAboutParagraphPositions(next.map((item) => item.id));
+  revalidateAbout();
+}
+
+export async function moveFactAction(formData: FormData) {
+  await requireAdmin();
+  const id = readId(formData);
+  const direction = String(formData.get("direction") ?? "");
+  if (!id || (direction !== "up" && direction !== "down")) return;
+  const items = await listAboutFacts();
+  const fromIndex = items.findIndex((item) => item.id === id);
+  if (fromIndex < 0) return;
+  const toIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
+  const next = moveItem(items, fromIndex, toIndex);
+  await setAboutFactPositions(next.map((item) => item.id));
+  revalidateAbout();
 }

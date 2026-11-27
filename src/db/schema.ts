@@ -76,6 +76,7 @@ export const skills = sqliteTable("skills", {
   iconSlug: text("icon_slug").notNull().default(""),
   color: text("color").notNull().default(""),
   level: text("level").notNull().default("proficient"),
+  category: text("category").notNull().default(""),
   position: integer("position").notNull(),
 });
 

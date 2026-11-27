@@ -7,6 +7,7 @@ import {
   unpublishStudioResume,
   type StudioState,
 } from "@/app/admin/resume/actions";
+import { showAdminToast } from "@/components/admin/AdminToast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,11 +27,15 @@ export function PublishResumeButton({ initiallyPublished }: { initiallyPublished
 
   useEffect(() => {
     if (publishState.published === true) setPublished(true);
-  }, [publishState.published, publishState.message]);
+    if (publishState.error) showAdminToast(publishState.error, "error");
+    else if (publishState.message) showAdminToast(publishState.message);
+  }, [publishState.published, publishState.message, publishState.error]);
 
   useEffect(() => {
     if (unpublishState.published === false) setPublished(false);
-  }, [unpublishState.published, unpublishState.message]);
+    if (unpublishState.error) showAdminToast(unpublishState.error, "error");
+    else if (unpublishState.message) showAdminToast(unpublishState.message);
+  }, [unpublishState.published, unpublishState.message, unpublishState.error]);
 
   const state = publishState.message || publishState.error ? publishState : unpublishState;
   const pending = publishPending || unpublishPending;

@@ -34,12 +34,23 @@ export async function Contact() {
             </li>
           ))}
         </ul>
-        <form id="contact-form" className="mt-8 grid max-w-xl gap-4">
+        <form id="contact-form" className="relative mt-8 grid max-w-xl gap-4">
+          <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+            <label>
+              Company
+              <input name="company" type="text" tabIndex={-1} autoComplete="off" />
+            </label>
+            <label>
+              Website
+              <input name="website" type="text" tabIndex={-1} autoComplete="off" />
+            </label>
+          </div>
           <label className="grid gap-2 text-sm font-medium">
             Name
             <input
               name="name"
               required
+              maxLength={100}
               autoComplete="name"
               className="h-10 rounded-md border bg-background px-3 text-sm font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -50,6 +61,7 @@ export async function Contact() {
               name="email"
               type="email"
               required
+              maxLength={200}
               autoComplete="email"
               className="h-10 rounded-md border bg-background px-3 text-sm font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -60,6 +72,7 @@ export async function Contact() {
               name="message"
               required
               minLength={10}
+              maxLength={5000}
               rows={5}
               className="rounded-md border bg-background px-3 py-2 text-sm font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
