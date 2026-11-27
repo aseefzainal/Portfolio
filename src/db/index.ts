@@ -117,6 +117,7 @@ export type StoredSkill = {
   iconSlug: string;
   color: string;
   level: SkillLevel;
+  category: string;
   position: number;
 };
 
@@ -353,6 +354,15 @@ export async function deleteAboutParagraph(id: number) {
   await db.delete(aboutParagraphs).where(eq(aboutParagraphs.id, id));
 }
 
+export async function setAboutParagraphPositions(orderedIds: number[]) {
+  const db = await getDb();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      db.update(aboutParagraphs).set({ position: index }).where(eq(aboutParagraphs.id, id)),
+    ),
+  );
+}
+
 export async function listAboutFacts(): Promise<AboutFact[]> {
   const db = await getDb();
   return db.select().from(aboutHighlights).orderBy(asc(aboutHighlights.position), asc(aboutHighlights.id));
@@ -378,6 +388,15 @@ export async function updateAboutFact(id: number, input: { title: string; text: 
 export async function deleteAboutFact(id: number) {
   const db = await getDb();
   await db.delete(aboutHighlights).where(eq(aboutHighlights.id, id));
+}
+
+export async function setAboutFactPositions(orderedIds: number[]) {
+  const db = await getDb();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      db.update(aboutHighlights).set({ position: index }).where(eq(aboutHighlights.id, id)),
+    ),
+  );
 }
 
 export async function listTimelineEntries(
@@ -459,6 +478,7 @@ function toStoredSkill(row: typeof skills.$inferSelect): StoredSkill {
     iconSlug: row.iconSlug,
     color: row.color,
     level: parseSkillLevel(row.level),
+    category: row.category ?? "",
     position: row.position,
   };
 }
@@ -485,6 +505,7 @@ export async function insertSkill(input: Omit<StoredSkill, "id" | "position">) {
       iconSlug: input.iconSlug,
       color: input.color,
       level: input.level,
+      category: input.category,
       position: (current?.value ?? -1) + 1,
     })
     .returning({ id: skills.id });
@@ -500,6 +521,7 @@ export async function updateSkill(id: number, input: Omit<StoredSkill, "id" | "p
       iconSlug: input.iconSlug,
       color: input.color,
       level: input.level,
+      category: input.category,
     })
     .where(eq(skills.id, id));
 }

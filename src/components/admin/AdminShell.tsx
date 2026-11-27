@@ -2,6 +2,7 @@ import { signOut } from "@/auth";
 import { auth } from "@/auth";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { AdminToastHost } from "@/components/admin/AdminToast";
 import {
   countUnreadContactMessages,
   getSiteProfile,
@@ -65,6 +66,7 @@ export async function AdminShell({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-6xl">{children}</div>
         </main>
       </div>
+      <AdminToastHost />
     </div>
   );
 }

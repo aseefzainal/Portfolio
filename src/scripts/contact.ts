@@ -35,6 +35,8 @@ export function initContact() {
             name: data.get("name"),
             email: data.get("email"),
             message: data.get("message"),
+            company: data.get("company"),
+            website: data.get("website"),
           }),
         });
         const result = (await response.json()) as Result;

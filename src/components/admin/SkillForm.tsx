@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { FormState } from "@/lib/admin";
 import type { StoredSkill } from "@/db";
+import { skillCategoryPresets } from "@/lib/skill-categories";
 import { skillIconOptions } from "@/lib/skill-icons";
 import { skillLevelLabels, skillLevels } from "@/lib/skill-level";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -51,20 +52,38 @@ export function SkillForm({
           </SelectContent>
         </Select>
       </div>
-      <div className="grid gap-2">
-        <Label htmlFor="level">Level</Label>
-        <Select name="level" defaultValue={skill?.level ?? "proficient"}>
-          <SelectTrigger id="level" className="h-10 w-full">
-            <SelectValue placeholder="Proficient" />
-          </SelectTrigger>
-          <SelectContent>
-            {skillLevels.map((level) => (
-              <SelectItem key={level} value={level}>
-                {skillLevelLabels[level]}
-              </SelectItem>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="level">Level</Label>
+          <Select name="level" defaultValue={skill?.level ?? "proficient"}>
+            <SelectTrigger id="level" className="h-10 w-full">
+              <SelectValue placeholder="Proficient" />
+            </SelectTrigger>
+            <SelectContent>
+              {skillLevels.map((level) => (
+                <SelectItem key={level} value={level}>
+                  {skillLevelLabels[level]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="category">Category</Label>
+          <Input
+            id="category"
+            name="category"
+            list="skill-category-presets"
+            defaultValue={skill?.category ?? ""}
+            placeholder="Backend"
+            className="h-10"
+          />
+          <datalist id="skill-category-presets">
+            {skillCategoryPresets.map((preset) => (
+              <option key={preset} value={preset} />
             ))}
-          </SelectContent>
-        </Select>
+          </datalist>
+        </div>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="color">Color</Label>

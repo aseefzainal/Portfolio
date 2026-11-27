@@ -25,8 +25,7 @@ CREATE TABLE profiles (
   linkedin text NOT NULL,
   photo text NOT NULL DEFAULT '',
   photo_shape text NOT NULL DEFAULT 'circle',
-  resume_published integer NOT NULL DEFAULT 0,
-  section_visibility text NOT NULL DEFAULT '{}'
+  resume_published integer NOT NULL DEFAULT 0
 );
 
 CREATE TABLE about_paragraphs (
@@ -71,7 +70,6 @@ CREATE TABLE skills (
   name text NOT NULL,
   icon_slug text NOT NULL DEFAULT '',
   color text NOT NULL DEFAULT '',
-  level text NOT NULL DEFAULT 'proficient',
   position integer NOT NULL
 );
 
