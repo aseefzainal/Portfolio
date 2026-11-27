@@ -7,6 +7,7 @@ import {
   deleteStudioSkill,
   deleteStudioTimelineEntry,
   reorderStudioProjects,
+  reorderStudioSkills,
   reorderStudioTimelineEntries,
   saveStudioProfile,
   saveStudioProject,
@@ -15,6 +16,7 @@ import {
   saveStudioTimelineEntry,
   type StudioState,
 } from "@/app/admin/resume/actions";
+import { showAdminToast } from "@/components/admin/AdminToast";
 import { ResumePreview } from "@/components/admin/resume/ResumePreview";
 import {
   nextTempId,
@@ -46,6 +48,7 @@ import { geocodeLocation } from "@/lib/geocode";
 import { parseProfilePhotoShape } from "@/lib/profile-photo";
 import type { SectionFlags, SectionKey } from "@/lib/section-visibility";
 import { skillIconOptions } from "@/lib/skill-icons";
+import { skillCategoryPresets } from "@/lib/skill-categories";
 import { skillLevelLabels, skillLevels } from "@/lib/skill-level";
 import {
   employmentTypes,
@@ -57,6 +60,25 @@ import {
 import { cn } from "@/lib/utils";
 
 const initialStudio: StudioState = { error: "", message: "" };
+
+function draftSnapshot(draft: ResumeDraft) {
+  return JSON.stringify(draft);
+}
+
+async function toastStudioAction(resultPromise: Promise<StudioState>, fallbackOk: string) {
+  try {
+    const result = await resultPromise;
+    if (result.error) {
+      showAdminToast(result.error, "error");
+      return result;
+    }
+    showAdminToast(result.message || fallbackOk);
+    return result;
+  } catch {
+    showAdminToast("Something went wrong.", "error");
+    return { error: "Something went wrong.", message: "" } satisfies StudioState;
+  }
+}
 
 function MonthSelectValue() {
   return (
@@ -94,6 +116,27 @@ export function ResumeStudio({
     skill: initial.skills[0]?.id ?? null,
     project: initial.projects[0]?.id ?? null,
   });
+  const savedSnapshotRef = useRef(draftSnapshot(initial));
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setDirty(draftSnapshot(draft) !== savedSnapshotRef.current);
+  }, [draft]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
+  function markDraftSaved(next: ResumeDraft = draft) {
+    savedSnapshotRef.current = draftSnapshot(next);
+    setDirty(false);
+  }
 
   function persistTimelineOrder(kind: TimelineKind, items: { id: number }[]) {
     const ids = items.map((item) => item.id).filter((id) => id > 0);
@@ -101,7 +144,7 @@ export function ResumeStudio({
     const formData = new FormData();
     formData.set("kind", kind);
     formData.set("ids", ids.join(","));
-    void reorderStudioTimelineEntries(formData);
+    void toastStudioAction(reorderStudioTimelineEntries(formData), "Order saved.");
   }
 
   function persistProjectOrder(items: { id: number }[]) {
@@ -109,61 +152,96 @@ export function ResumeStudio({
     if (!ids.length) return;
     const formData = new FormData();
     formData.set("ids", ids.join(","));
-    void reorderStudioProjects(formData);
+    void toastStudioAction(reorderStudioProjects(formData), "Order saved.");
+  }
+
+  function persistSkillOrder(items: { id: number }[]) {
+    const ids = items.map((item) => item.id).filter((id) => id > 0);
+    if (!ids.length) return;
+    const formData = new FormData();
+    formData.set("ids", ids.join(","));
+    void toastStudioAction(reorderStudioSkills(formData), "Order saved.");
   }
 
   function patchSectionVisibility(section: SectionKey, patch: Partial<SectionFlags>) {
     const nextFlags = { ...draft.profile.sections[section], ...patch };
-    setDraft((prev) => ({
-      ...prev,
+    const nextDraft: ResumeDraft = {
+      ...draft,
       profile: {
-        ...prev.profile,
-        sections: { ...prev.profile.sections, [section]: nextFlags },
+        ...draft.profile,
+        sections: { ...draft.profile.sections, [section]: nextFlags },
       },
-    }));
+    };
+    setDraft(nextDraft);
+    markDraftSaved(nextDraft);
     const formData = new FormData();
     formData.set("section", section);
     formData.set("site", nextFlags.site ? "1" : "0");
     formData.set("resume", nextFlags.resume ? "1" : "0");
-    void saveStudioSectionVisibility(formData);
+    void toastStudioAction(saveStudioSectionVisibility(formData), "Visibility saved.");
   }
 
   function reorderExperience(fromIndex: number, toIndex: number) {
     const visible = draft.experience.filter((item) => item.showOnResume);
     const next = moveVisibleItem(draft.experience, visible, fromIndex, toIndex);
-    setDraft((prev) => ({ ...prev, experience: next }));
+    const nextDraft = { ...draft, experience: next };
+    setDraft(nextDraft);
+    markDraftSaved(nextDraft);
     persistTimelineOrder("work", next);
   }
 
   function reorderEducation(fromIndex: number, toIndex: number) {
     const visible = draft.education.filter((item) => item.showOnResume);
     const next = moveVisibleItem(draft.education, visible, fromIndex, toIndex);
-    setDraft((prev) => ({ ...prev, education: next }));
+    const nextDraft = { ...draft, education: next };
+    setDraft(nextDraft);
+    markDraftSaved(nextDraft);
     persistTimelineOrder("education", next);
   }
 
   function reorderCertificates(fromIndex: number, toIndex: number) {
     const next = moveItem(draft.certificates, fromIndex, toIndex);
-    setDraft((prev) => ({ ...prev, certificates: next }));
+    const nextDraft = { ...draft, certificates: next };
+    setDraft(nextDraft);
+    markDraftSaved(nextDraft);
     persistTimelineOrder("certificate", next);
   }
 
   function reorderProjects(fromIndex: number, toIndex: number) {
     const visible = draft.projects.filter((item) => item.showOnResume);
     const next = moveVisibleItem(draft.projects, visible, fromIndex, toIndex);
-    setDraft((prev) => ({ ...prev, projects: next }));
+    const nextDraft = { ...draft, projects: next };
+    setDraft(nextDraft);
+    markDraftSaved(nextDraft);
     persistProjectOrder(next);
+  }
+
+  function reorderSkills(fromIndex: number, toIndex: number) {
+    const next = moveItem(draft.skills, fromIndex, toIndex);
+    const nextDraft = { ...draft, skills: next };
+    setDraft(nextDraft);
+    markDraftSaved(nextDraft);
+    persistSkillOrder(next);
   }
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
       <div className="min-w-0">
+        {dirty ? (
+          <p className="mb-2 text-xs text-amber-700 dark:text-amber-400">Unsaved changes</p>
+        ) : null}
         <Tabs
           value={activeTab}
           onValueChange={(value) => {
-            if (typeof value === "string" && value in resumePreviewSectionByTab) {
-              setActiveTab(value as ResumeTab);
+            if (typeof value !== "string" || !(value in resumePreviewSectionByTab)) return;
+            if (value === activeTab) return;
+            if (
+              dirty &&
+              !window.confirm("You have unsaved changes. Switch tabs anyway?")
+            ) {
+              return;
             }
+            setActiveTab(value as ResumeTab);
           }}
         >
           <TabsList variant="line" className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1">
@@ -175,7 +253,7 @@ export function ResumeStudio({
           </TabsList>
 
           <TabsContent value="profile" className="outline-none">
-            <ProfileEditor draft={draft} setDraft={setDraft} />
+            <ProfileEditor draft={draft} setDraft={setDraft} onSaved={markDraftSaved} />
           </TabsContent>
 
           <TabsContent value="experience" className="outline-none">
@@ -190,6 +268,7 @@ export function ResumeStudio({
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, experience: items }))}
               sectionVisibility={draft.profile.sections.experience}
               onSectionVisibilityChange={(patch) => patchSectionVisibility("experience", patch)}
+              onSaved={markDraftSaved}
             />
           </TabsContent>
 
@@ -205,6 +284,7 @@ export function ResumeStudio({
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, education: items }))}
               sectionVisibility={draft.profile.sections.education}
               onSectionVisibilityChange={(patch) => patchSectionVisibility("education", patch)}
+              onSaved={markDraftSaved}
             />
           </TabsContent>
 
@@ -220,6 +300,7 @@ export function ResumeStudio({
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, certificates: items }))}
               sectionVisibility={draft.profile.sections.certificates}
               onSectionVisibilityChange={(patch) => patchSectionVisibility("certificates", patch)}
+              onSaved={markDraftSaved}
             />
           </TabsContent>
 
@@ -231,6 +312,8 @@ export function ResumeStudio({
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, skills: items }))}
               sectionVisibility={draft.profile.sections.skills}
               onSectionVisibilityChange={(patch) => patchSectionVisibility("skills", patch)}
+              onReorder={reorderSkills}
+              onSaved={markDraftSaved}
             />
           </TabsContent>
 
@@ -243,6 +326,7 @@ export function ResumeStudio({
               onChangeItems={(items) => setDraft((prev) => ({ ...prev, projects: items }))}
               sectionVisibility={draft.profile.sections.projects}
               onSectionVisibilityChange={(patch) => patchSectionVisibility("projects", patch)}
+              onSaved={markDraftSaved}
             />
           </TabsContent>
         </Tabs>
@@ -259,6 +343,7 @@ export function ResumeStudio({
               education: reorderEducation,
               certificates: reorderCertificates,
               projects: reorderProjects,
+              skills: reorderSkills,
             }}
           />
         </div>
@@ -270,15 +355,22 @@ export function ResumeStudio({
 function ProfileEditor({
   draft,
   setDraft,
+  onSaved,
 }: {
   draft: ResumeDraft;
   setDraft: React.Dispatch<React.SetStateAction<ResumeDraft>>;
+  onSaved?: () => void;
 }) {
   const [state, action, pending] = useActionState(saveStudioProfile, initialStudio);
   const [photoError, setPhotoError] = useState("");
   const [photoBusy, setPhotoBusy] = useState(false);
   const profile = draft.profile;
   const photoShape = parseProfilePhotoShape(profile.photoShape);
+
+  useEffect(() => {
+    if (state.message) onSaved?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.message]);
 
   function patch<K extends keyof ResumeDraft["profile"]>(key: K, value: ResumeDraft["profile"][K]) {
     setDraft((prev) => ({ ...prev, profile: { ...prev.profile, [key]: value } }));
@@ -385,6 +477,7 @@ function TimelineEditor({
   onChangeItems,
   sectionVisibility,
   onSectionVisibilityChange,
+  onSaved,
 }: {
   kind: TimelineKind;
   title: string;
@@ -396,6 +489,7 @@ function TimelineEditor({
   onChangeItems: (items: TimelineEntry[]) => void;
   sectionVisibility: SectionFlags;
   onSectionVisibilityChange: (patch: Partial<SectionFlags>) => void;
+  onSaved?: () => void;
 }) {
   const [state, action, pending] = useActionState(saveStudioTimelineEntry, initialStudio);
   const [pendingDelete, startDelete] = useTransition();
@@ -417,6 +511,11 @@ function TimelineEditor({
     // Only sync when save returns a new id.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.id]);
+
+  useEffect(() => {
+    if (state.message) onSaved?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.message]);
 
   useEffect(() => {
     if (kind !== "work" || !selected) {
@@ -1180,6 +1279,8 @@ function SkillsEditor({
   onChangeItems,
   sectionVisibility,
   onSectionVisibilityChange,
+  onReorder,
+  onSaved,
 }: {
   items: StoredSkill[];
   selectedId: number | null;
@@ -1187,11 +1288,14 @@ function SkillsEditor({
   onChangeItems: (items: StoredSkill[]) => void;
   sectionVisibility: SectionFlags;
   onSectionVisibilityChange: (patch: Partial<SectionFlags>) => void;
+  onReorder: (fromIndex: number, toIndex: number) => void;
+  onSaved?: () => void;
 }) {
   const [state, action, pending] = useActionState(saveStudioSkill, initialStudio);
   const [pendingDelete, startDelete] = useTransition();
   const [deleteError, setDeleteError] = useState("");
   const selected = items.find((item) => item.id === selectedId) ?? null;
+  const selectedIndex = selected ? items.findIndex((item) => item.id === selected.id) : -1;
 
   useEffect(() => {
     if (state.id && selectedId !== null && selectedId < 1) {
@@ -1200,6 +1304,11 @@ function SkillsEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.id]);
+
+  useEffect(() => {
+    if (state.message) onSaved?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.message]);
 
   function patchSelected(patch: Partial<StoredSkill>) {
     if (!selected) return;
@@ -1214,6 +1323,7 @@ function SkillsEditor({
       iconSlug: "",
       color: "",
       level: "proficient",
+      category: "",
       position: items.length,
     };
     onChangeItems([...items, skill]);
@@ -1240,6 +1350,7 @@ function SkillsEditor({
       const next = items.filter((item) => item.id !== selected.id);
       onChangeItems(next);
       onSelect(next[0]?.id ?? null);
+      onSaved?.();
     });
   }
 
@@ -1248,6 +1359,24 @@ function SkillsEditor({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">Skills</p>
         <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={selectedIndex < 0 || selectedIndex === 0}
+            onClick={() => onReorder(selectedIndex, selectedIndex - 1)}
+          >
+            Up
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={selectedIndex < 0 || selectedIndex >= items.length - 1}
+            onClick={() => onReorder(selectedIndex, selectedIndex + 1)}
+          >
+            Down
+          </Button>
           <Button type="button" variant="outline" size="sm" onClick={addSkill}>
             Add
           </Button>
@@ -1297,28 +1426,47 @@ function SkillsEditor({
               onChange={(event) => patchSelected({ name: event.target.value })}
             />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="skill-level">Level</Label>
-            <Select
-              name="level"
-              value={selected.level}
-              onValueChange={(value) => {
-                if (value === "advanced" || value === "proficient" || value === "familiar") {
-                  patchSelected({ level: value });
-                }
-              }}
-            >
-              <SelectTrigger id="skill-level" className="h-10 w-full">
-                <SelectValue placeholder="Proficient" />
-              </SelectTrigger>
-              <SelectContent>
-                {skillLevels.map((level) => (
-                  <SelectItem key={level} value={level}>
-                    {skillLevelLabels[level]}
-                  </SelectItem>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="skill-level">Level</Label>
+              <Select
+                name="level"
+                value={selected.level}
+                onValueChange={(value) => {
+                  if (value === "advanced" || value === "proficient" || value === "familiar") {
+                    patchSelected({ level: value });
+                  }
+                }}
+              >
+                <SelectTrigger id="skill-level" className="h-10 w-full">
+                  <SelectValue placeholder="Proficient" />
+                </SelectTrigger>
+                <SelectContent>
+                  {skillLevels.map((level) => (
+                    <SelectItem key={level} value={level}>
+                      {skillLevelLabels[level]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="skill-category">Category</Label>
+              <Input
+                id="skill-category"
+                name="category"
+                list="skill-category-presets"
+                className="h-10"
+                placeholder="Backend"
+                value={selected.category}
+                onChange={(event) => patchSelected({ category: event.target.value })}
+              />
+              <datalist id="skill-category-presets">
+                {skillCategoryPresets.map((preset) => (
+                  <option key={preset} value={preset} />
                 ))}
-              </SelectContent>
-            </Select>
+              </datalist>
+            </div>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="skill-icon">Icon</Label>
@@ -1376,6 +1524,7 @@ function ProjectsEditor({
   onChangeItems,
   sectionVisibility,
   onSectionVisibilityChange,
+  onSaved,
 }: {
   items: StoredProject[];
   skills: StoredSkill[];
@@ -1384,6 +1533,7 @@ function ProjectsEditor({
   onChangeItems: (items: StoredProject[]) => void;
   sectionVisibility: SectionFlags;
   onSectionVisibilityChange: (patch: Partial<SectionFlags>) => void;
+  onSaved?: () => void;
 }) {
   const [state, action, pending] = useActionState(saveStudioProject, initialStudio);
   const [pendingDelete, startDelete] = useTransition();
@@ -1399,6 +1549,11 @@ function ProjectsEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.id]);
+
+  useEffect(() => {
+    if (state.message) onSaved?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.message]);
 
   useEffect(() => {
     setImageError("");

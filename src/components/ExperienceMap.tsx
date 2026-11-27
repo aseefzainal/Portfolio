@@ -312,8 +312,8 @@ export function ExperienceMapPanel({ items }: { items: ExperienceMapItem[] }) {
                     <span className="mt-0.5 block text-xs text-muted-foreground">{item.location}</span>
                   ) : null}
                   {!mapped ? (
-                    <span className="mt-1 block text-xs text-amber-700 dark:text-amber-400">
-                      No map marker — add a Location in admin so coordinates can be filled.
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      Location not shown on map.
                     </span>
                   ) : null}
                   {item.detail ? (
@@ -336,7 +336,7 @@ export function ExperienceMapPanel({ items }: { items: ExperienceMapItem[] }) {
         />
         {mappable.length === 0 ? (
           <p className="border-t px-4 py-3 text-xs text-muted-foreground">
-            Map shows Kuala Lumpur. Add a Location on each work entry in admin to place markers.
+            Map centered on Kuala Lumpur. Markers appear when work locations are available.
           </p>
         ) : null}
       </div>

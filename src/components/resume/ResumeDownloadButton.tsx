@@ -1,52 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import html2canvas from "html2canvas";
 import { PDFDocument } from "pdf-lib";
 
 const A4_WIDTH_PX = 794;
 const A4_HEIGHT_PX = Math.round((A4_WIDTH_PX * 297) / 210);
 const A4_WIDTH_PT = 595.28;
 const A4_HEIGHT_PT = 841.89;
-
-type Html2CanvasFn = (
-  element: HTMLElement,
-  options?: {
-    backgroundColor?: string | null;
-    scale?: number;
-    width?: number;
-    windowWidth?: number;
-    useCORS?: boolean;
-    allowTaint?: boolean;
-    logging?: boolean;
-  },
-) => Promise<HTMLCanvasElement>;
-
-async function loadHtml2Canvas() {
-  const globalWindow = window as Window & { html2canvas?: Html2CanvasFn };
-  if (globalWindow.html2canvas) return globalWindow.html2canvas;
-
-  await new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>("script[data-html2canvas]");
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("Could not load PDF exporter.")), {
-        once: true,
-      });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-    script.async = true;
-    script.dataset.html2canvas = "true";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Could not load PDF exporter."));
-    document.head.appendChild(script);
-  });
-
-  if (!globalWindow.html2canvas) throw new Error("Could not load PDF exporter.");
-  return globalWindow.html2canvas;
-}
 
 async function waitForImages(root: HTMLElement) {
   const images = [...root.querySelectorAll("img")];
@@ -104,7 +65,6 @@ export function ResumeDownloadButton({ filename }: { filename: string }) {
 
     try {
       await waitForImages(clone);
-      const html2canvas = await loadHtml2Canvas();
       const fullCanvas = await html2canvas(clone, {
         backgroundColor: "#ffffff",
         scale: 2,
@@ -168,7 +128,11 @@ export function ResumeDownloadButton({ filename }: { filename: string }) {
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not download resume.");
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not generate the PDF. Try again or use your browser print dialog.";
+      setError(message);
     } finally {
       mount.remove();
       setBusy(false);

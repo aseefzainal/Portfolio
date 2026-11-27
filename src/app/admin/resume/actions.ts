@@ -89,10 +89,10 @@ export async function saveStudioProfile(
   return { error: "", message: "Profile saved." };
 }
 
-export async function saveStudioSectionVisibility(formData: FormData) {
+export async function saveStudioSectionVisibility(formData: FormData): Promise<StudioState> {
   await requireAdmin();
   const section = String(formData.get("section") ?? "").trim();
-  if (!isSectionKey(section)) return;
+  if (!isSectionKey(section)) return { error: "Invalid section.", message: "" };
   const site = String(formData.get("site") ?? "") === "1";
   const resume = String(formData.get("resume") ?? "") === "1";
   const current = await getSiteProfile();
@@ -101,6 +101,7 @@ export async function saveStudioSectionVisibility(formData: FormData) {
     [section]: { site, resume },
   });
   revalidateStudio();
+  return { error: "", message: "Visibility saved." };
 }
 
 export async function publishStudioResume(
@@ -250,6 +251,7 @@ export async function saveStudioSkill(_state: StudioState, formData: FormData): 
   const rawIcon = String(formData.get("iconSlug") ?? "").trim();
   const iconSlug = rawIcon === "__none__" ? "" : rawIcon;
   const color = String(formData.get("color") ?? "").trim();
+  const category = String(formData.get("category") ?? "").trim();
   const levelRaw = String(formData.get("level") ?? "").trim();
   const level =
     levelRaw === "advanced" || levelRaw === "familiar" || levelRaw === "proficient"
@@ -260,12 +262,12 @@ export async function saveStudioSkill(_state: StudioState, formData: FormData): 
   if (!name) return { error: "Name is required.", message: "" };
 
   if (Number.isInteger(rawId) && rawId > 0) {
-    await updateSkill(rawId, { name, iconSlug, color, level });
+    await updateSkill(rawId, { name, iconSlug, color, level, category });
     revalidateStudio();
     return { error: "", message: "Skill saved.", id: rawId };
   }
 
-  const id = await insertSkill({ name, iconSlug, color, level });
+  const id = await insertSkill({ name, iconSlug, color, level, category });
   revalidateStudio();
   return { error: "", message: "Skill added.", id };
 }

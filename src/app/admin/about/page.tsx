@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import {
   createFactAction,
   createParagraphAction,
+  moveFactAction,
+  moveParagraphAction,
   removeFactAction,
   removeParagraphAction,
 } from "@/app/admin/about/actions";
@@ -49,13 +51,39 @@ async function AboutManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paragraphs.map((paragraph) => (
+                {paragraphs.map((paragraph, index) => (
                   <TableRow key={paragraph.id}>
                     <TableCell className="max-w-2xl whitespace-normal text-muted-foreground">
                       {paragraph.body}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-2">
+                        <form action={moveParagraphAction}>
+                          <input type="hidden" name="id" value={paragraph.id} />
+                          <input type="hidden" name="direction" value="up" />
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="sm"
+                            disabled={index === 0}
+                            className="h-8 px-2"
+                          >
+                            Up
+                          </Button>
+                        </form>
+                        <form action={moveParagraphAction}>
+                          <input type="hidden" name="id" value={paragraph.id} />
+                          <input type="hidden" name="direction" value="down" />
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="sm"
+                            disabled={index === paragraphs.length - 1}
+                            className="h-8 px-2"
+                          >
+                            Down
+                          </Button>
+                        </form>
                         <Link
                           href={`/admin/about/paragraphs/${paragraph.id}`}
                           className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
@@ -97,12 +125,38 @@ async function AboutManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {facts.map((fact) => (
+                {facts.map((fact, index) => (
                   <TableRow key={fact.id}>
                     <TableCell className="font-medium">{fact.title}</TableCell>
                     <TableCell className="text-muted-foreground">{fact.text}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-2">
+                        <form action={moveFactAction}>
+                          <input type="hidden" name="id" value={fact.id} />
+                          <input type="hidden" name="direction" value="up" />
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="sm"
+                            disabled={index === 0}
+                            className="h-8 px-2"
+                          >
+                            Up
+                          </Button>
+                        </form>
+                        <form action={moveFactAction}>
+                          <input type="hidden" name="id" value={fact.id} />
+                          <input type="hidden" name="direction" value="down" />
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="sm"
+                            disabled={index === facts.length - 1}
+                            className="h-8 px-2"
+                          >
+                            Down
+                          </Button>
+                        </form>
                         <Link
                           href={`/admin/about/facts/${fact.id}`}
                           className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}

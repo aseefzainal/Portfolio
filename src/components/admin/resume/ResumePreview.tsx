@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { GripVerticalIcon } from "lucide-react";
 import type { ResumeDraft } from "@/components/admin/resume/types";
 import { profilePhotoShapeClass } from "@/lib/profile-photo";
+import { groupSkillsByCategory } from "@/lib/skill-categories";
 import { cn } from "@/lib/utils";
 
 export type ResumeReorderHandlers = {
@@ -11,6 +12,7 @@ export type ResumeReorderHandlers = {
   education?: (fromIndex: number, toIndex: number) => void;
   certificates?: (fromIndex: number, toIndex: number) => void;
   projects?: (fromIndex: number, toIndex: number) => void;
+  skills?: (fromIndex: number, toIndex: number) => void;
 };
 
 function Section({
@@ -309,23 +311,56 @@ function ResumeBody({
             <Keep id="skills-empty" spacer={spacers["skills-empty"] ?? 0}>
               <p className="text-neutral-400">No skills yet.</p>
             </Keep>
-          ) : (
-            <Keep id="skills" spacer={spacers.skills ?? 0}>
-              <ul className="flex flex-wrap gap-1.5">
-                {skills.map((skill) => (
-                  <li
-                    key={skill.id}
+          ) : reorder?.skills ? (
+            <ul className="flex flex-wrap gap-1.5">
+              {skills.map((skill, index) => (
+                <SortableRow
+                  key={skill.id}
+                  index={index}
+                  keepId={`skill-${skill.id}`}
+                  spacer={spacers[`skill-${skill.id}`] ?? 0}
+                  enabled
+                  onMove={reorder.skills}
+                >
+                  <span
                     className={cn(
-                      "rounded border px-2 py-0.5 text-[11px] leading-4",
+                      "inline-block rounded border px-2 py-0.5 text-[11px] leading-4",
                       skill.level === "advanced" && "border-sky-600 text-sky-700",
                       skill.level === "proficient" && "border-neutral-500 text-neutral-800",
                       skill.level === "familiar" && "border-neutral-300 text-neutral-400",
                     )}
                   >
                     {skill.name || "Skill"}
-                  </li>
+                  </span>
+                </SortableRow>
+              ))}
+            </ul>
+          ) : (
+            <Keep id="skills" spacer={spacers.skills ?? 0}>
+              <div className="space-y-3">
+                {groupSkillsByCategory(skills).map((group) => (
+                  <div key={group.category}>
+                    <p className="text-[10px] font-semibold tracking-wide text-neutral-500 uppercase">
+                      {group.category}
+                    </p>
+                    <ul className="mt-1 flex flex-wrap gap-1.5">
+                      {group.items.map((skill) => (
+                        <li
+                          key={skill.id}
+                          className={cn(
+                            "rounded border px-2 py-0.5 text-[11px] leading-4",
+                            skill.level === "advanced" && "border-sky-600 text-sky-700",
+                            skill.level === "proficient" && "border-neutral-500 text-neutral-800",
+                            skill.level === "familiar" && "border-neutral-300 text-neutral-400",
+                          )}
+                        >
+                          {skill.name || "Skill"}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </Keep>
           )}
         </Section>
@@ -382,13 +417,27 @@ function readPageInset(measure: HTMLElement) {
   return Number.isFinite(top) && top > 0 ? top : 40;
 }
 
-/** Push whole blocks to the next page instead of splitting them across the A4 cut. */
+/** Document height that keeps bottom inset equal to top padding (no trailing empty page). */
+function measureContentHeight(measure: HTMLElement) {
+  const inset = readPageInset(measure);
+  const rootTop = measure.getBoundingClientRect().top;
+  let bottom = 0;
+  for (const block of measure.querySelectorAll<HTMLElement>("[data-resume-keep]")) {
+    bottom = Math.max(bottom, block.getBoundingClientRect().bottom - rootTop);
+  }
+  if (bottom <= 0) return Math.max(measure.scrollHeight, inset * 2);
+  return Math.max(bottom + inset, inset * 2);
+}
+
+/**
+ * Push whole blocks to the next page instead of splitting them across the A4 cut.
+ * Bottom margin on each page matches top padding (`pageInset`).
+ */
 function computeSpacers(measure: HTMLElement, pageHeight: number): Record<string, number> {
   const rootTop = measure.getBoundingClientRect().top;
   const pageInset = readPageInset(measure);
   const blocks = [...measure.querySelectorAll<HTMLElement>("[data-resume-keep]")];
   const next: Record<string, number> = {};
-  let pageBottom = pageHeight;
   let extra = 0;
 
   for (let index = 0; index < blocks.length; index += 1) {
@@ -396,34 +445,36 @@ function computeSpacers(measure: HTMLElement, pageHeight: number): Record<string
     const key = block.dataset.resumeKey;
     if (!key) continue;
 
-    const naturalTop = block.getBoundingClientRect().top - rootTop;
-    const height = block.offsetHeight;
-    const top = naturalTop + extra;
-    const bottom = top + height;
+    const top = block.getBoundingClientRect().top - rootTop + extra;
+    const bottom = top + block.offsetHeight;
+    const pageIndex = Math.max(0, Math.floor(top / pageHeight));
+    const pageEnd = (pageIndex + 1) * pageHeight;
+    const contentEnd = pageEnd - pageInset;
+    const inBottomMargin = top > contentEnd + 0.5;
+    const overflows = bottom > contentEnd + 0.5;
 
-    while (top >= pageBottom - pageInset - 0.5) {
-      pageBottom += pageHeight;
-    }
+    // Already fully inside this page's content box (with equal top/bottom inset).
+    if (!inBottomMargin && !overflows) continue;
 
-    // Keep bottom page margin equal to the top padding.
-    if (bottom <= pageBottom - pageInset + 0.5) continue;
+    // Move to the next page, starting after the same inset as page-1 top padding.
+    const destTop = pageEnd + pageInset;
 
     let targetKey = key;
     let targetTop = top;
     const prev = index > 0 ? blocks[index - 1] : null;
     if (prev?.dataset.resumeKeep === "heading" && prev.dataset.resumeKey) {
       const headingTop = prev.getBoundingClientRect().top - rootTop + extra;
-      if (headingTop < pageBottom - pageInset - 0.5) {
+      // Keep section heading with its first overflowing item when both were on this page.
+      if (headingTop < contentEnd + 0.5 && headingTop >= pageIndex * pageHeight - 0.5) {
         targetKey = prev.dataset.resumeKey;
         targetTop = headingTop;
       }
     }
 
-    const push = pageBottom - targetTop + pageInset;
+    const push = destTop - targetTop;
     if (push <= 0.5) continue;
     next[targetKey] = (next[targetKey] ?? 0) + push;
     extra += push;
-    pageBottom += pageHeight;
   }
 
   return next;
@@ -469,34 +520,37 @@ export function ResumePreview({
 
   useLayoutEffect(() => {
     let cancelled = false;
+    let clearFrame = 0;
     let applyFrame = 0;
-    let countFrame = 0;
 
+    // Clear first so the next frame measures natural positions (no stale pushes).
     setSpacers({});
-
-    applyFrame = requestAnimationFrame(() => {
+    clearFrame = requestAnimationFrame(() => {
       if (cancelled) return;
-      const measure = measureRef.current;
-      if (!measure) return;
-
-      const next = computeSpacers(measure, A4_HEIGHT_PX);
-      setSpacers((prev) => (sameSpacers(prev, next) ? prev : next));
-
-      countFrame = requestAnimationFrame(() => {
+      applyFrame = requestAnimationFrame(() => {
         if (cancelled) return;
-        const finalMeasure = measureRef.current;
-        if (!finalMeasure) return;
-        setContentHeight(finalMeasure.scrollHeight);
-        setPageCount(Math.max(1, Math.ceil(finalMeasure.scrollHeight / A4_HEIGHT_PX)));
+        const measure = measureRef.current;
+        if (!measure) return;
+        const next = computeSpacers(measure, A4_HEIGHT_PX);
+        setSpacers((prev) => (sameSpacers(prev, next) ? prev : next));
       });
     });
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(clearFrame);
       cancelAnimationFrame(applyFrame);
-      cancelAnimationFrame(countFrame);
     };
   }, [draft, studioMode]);
+
+  useLayoutEffect(() => {
+    const measure = measureRef.current;
+    if (!measure) return;
+    // Last keep bottom + top inset → bottom padding matches top on short final pages.
+    const height = measureContentHeight(measure);
+    setContentHeight(height);
+    setPageCount(Math.max(1, Math.ceil(height / A4_HEIGHT_PX)));
+  }, [draft, studioMode, spacers]);
 
   useEffect(() => {
     if (!focusSection) return;

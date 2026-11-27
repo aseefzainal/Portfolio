@@ -1,0 +1,3 @@
+-- Drizzle baseline snapshot (no-op for Wrangler).
+-- Schema already lives in migrations/0001–0007. Keep meta/0000_snapshot.json so
+-- future `npm run db:generate` emits diffs only. Do not apply this file to D1.

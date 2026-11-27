@@ -1,5 +1,6 @@
 import { SectionTitle } from "@/components/SectionTitle";
 import { getSiteProfile, listSkills } from "@/db";
+import { groupSkillsByCategory } from "@/lib/skill-categories";
 import { resolveSkillIcon } from "@/lib/skill-icons";
 import {
   skillLevelDotClass,
@@ -15,6 +16,7 @@ export async function Skills() {
   const profile = await getSiteProfile();
   if (!profile.sections.skills.site) return null;
   const skills = await listSkills();
+  const groups = groupSkillsByCategory(skills);
 
   return (
     <section id="skills" className="px-5 py-12 sm:py-16">
@@ -40,33 +42,39 @@ export async function Skills() {
                 </li>
               ))}
             </ul>
-            <ul className="mt-5 flex flex-wrap gap-2">
-              {skills.map((skill) => {
-                const icon = resolveSkillIcon(skill.iconSlug);
-                return (
-                  <li
-                    key={skill.id}
-                    data-reveal
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm",
-                      skillLevelPillClass(skill.level),
-                    )}
-                  >
-                    {icon ? (
-                      <svg
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                        className={skill.color ? "size-4" : "size-4"}
-                        style={skill.color ? { color: skill.color } : undefined}
-                      >
-                        <path fill="currentColor" d={icon.path} />
-                      </svg>
-                    ) : null}
-                    {skill.name}
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {groups.map((group) => (
+                <div key={group.category} data-reveal>
+                  <h3 className="text-sm font-semibold tracking-tight">{group.category}</h3>
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {group.items.map((skill) => {
+                      const icon = resolveSkillIcon(skill.iconSlug);
+                      return (
+                        <li
+                          key={skill.id}
+                          className={cn(
+                            "inline-flex items-center gap-2 rounded-md border bg-card px-3 py-1.5 text-sm",
+                            skillLevelPillClass(skill.level),
+                          )}
+                        >
+                          {icon ? (
+                            <svg
+                              viewBox="0 0 24 24"
+                              aria-hidden="true"
+                              className="size-4"
+                              style={skill.color ? { color: skill.color } : undefined}
+                            >
+                              <path fill="currentColor" d={icon.path} />
+                            </svg>
+                          ) : null}
+                          {skill.name}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </>
         )}
       </div>

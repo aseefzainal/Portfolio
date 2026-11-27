@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { deleteContactMessage, markAllContactMessagesRead } from "@/db";
+import { requireAdmin } from "@/lib/admin";
 
 function parseId(formData: FormData) {
   const id = Number(formData.get("id"));
@@ -11,12 +12,14 @@ function parseId(formData: FormData) {
 }
 
 export async function markAllMessagesReadAction() {
+  await requireAdmin();
   await markAllContactMessagesRead();
   revalidatePath("/admin");
   revalidatePath("/admin/messages");
 }
 
 export async function deleteMessageAction(formData: FormData) {
+  await requireAdmin();
   const id = parseId(formData);
   await deleteContactMessage(id);
   revalidatePath("/admin");
